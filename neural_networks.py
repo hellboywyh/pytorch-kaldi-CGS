@@ -60,14 +60,14 @@ class MLP(nn.Module):
     def __init__(self, options,inp_dim):
         super(MLP, self).__init__()
         
-        self.input_dim=inp_dim
-        self.dnn_lay=list(map(int, options['dnn_lay'].split(',')))
-        self.dnn_drop=list(map(float, options['dnn_drop'].split(','))) 
-        self.dnn_use_batchnorm=list(map(strtobool, options['dnn_use_batchnorm'].split(',')))
-        self.dnn_use_laynorm=list(map(strtobool, options['dnn_use_laynorm'].split(','))) 
-        self.dnn_use_laynorm_inp=strtobool(options['dnn_use_laynorm_inp'])
-        self.dnn_use_batchnorm_inp=strtobool(options['dnn_use_batchnorm_inp'])
-        self.dnn_act=options['dnn_act'].split(',')
+        self.input_dim = inp_dim
+        self.dnn_lay = list(map(int, options['dnn_lay'].split(',')))
+        self.dnn_drop = list(map(float, options['dnn_drop'].split(',')))
+        self.dnn_use_batchnorm = list(map(strtobool, options['dnn_use_batchnorm'].split(',')))
+        self.dnn_use_laynorm = list(map(strtobool, options['dnn_use_laynorm'].split(',')))
+        self.dnn_use_laynorm_inp = strtobool(options['dnn_use_laynorm_inp'])
+        self.dnn_use_batchnorm_inp = strtobool(options['dnn_use_batchnorm_inp'])
+        self.dnn_act = options['dnn_act'].split(',')
         self.to_do = options['to_do']
 
         self.mlp_hcgs = strtobool(options['mlp_hcgs'])
@@ -110,16 +110,16 @@ class MLP(nn.Module):
   
         # input layer normalization
         if self.dnn_use_laynorm_inp:
-           self.ln0=LayerNorm(self.input_dim)
+            self.ln0 = LayerNorm(self.input_dim)
           
         # input batch normalization    
         if self.dnn_use_batchnorm_inp:
-           self.bn0=nn.BatchNorm1d(self.input_dim,momentum=0.05)
+            self.bn0 = nn.BatchNorm1d(self.input_dim,momentum=0.05)
            
            
-        self.N_dnn_lay=len(self.dnn_lay)
+        self.N_dnn_lay = len(self.dnn_lay)
              
-        current_input=self.input_dim
+        current_input = self.input_dim
         
         # Initialization of hidden layers
         
@@ -142,7 +142,6 @@ class MLP(nn.Module):
                 add_bias=False
 
             # Linear operations
-            # if self.mlp_quant and not self.final_quant:
             if self.mlp_quant:
                 if self.mlp_quant_inp:
                     self.wx.append(QuantizeLinear(current_input, self.dnn_lay[i], self.param_quant[i], bias=add_bias, if_forward=self.final_quant, if_inp_quant=True, inp_quant=self.inp_quant[0]))
@@ -161,15 +160,15 @@ class MLP(nn.Module):
             self.wx[i].weight = torch.nn.Parameter(torch.Tensor(self.dnn_lay[i],current_input).uniform_(-np.sqrt(0.01/(current_input+self.dnn_lay[i])),np.sqrt(0.01/(current_input+self.dnn_lay[i]))))
             self.wx[i].bias = torch.nn.Parameter(torch.zeros(self.dnn_lay[i]))
 
-            current_input=self.dnn_lay[i]
+            current_input = self.dnn_lay[i]
 
-        self.out_dim=current_input
+        self.out_dim = current_input
          
     def forward(self, x):
         
         # Applying Layer/Batch Norm
         if bool(self.dnn_use_laynorm_inp):
-            x=self.ln0((x))
+            x = self.ln0((x))
         
         if bool(self.dnn_use_batchnorm_inp):
             x=self.bn0((x))
