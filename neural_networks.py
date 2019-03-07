@@ -12,6 +12,9 @@ import torch.nn as nn
 import numpy as np
 from distutils.util import strtobool
 import math
+import save_cgs_mat
+from HCGS import HCGS as HCGS
+from quantized_modules import BinarizeLinear, QuantizeLinear, Quantize, QuantizeVar
 
 
 class LayerNorm(nn.Module):
@@ -65,6 +68,37 @@ class MLP(nn.Module):
         self.dnn_use_laynorm_inp=strtobool(options['dnn_use_laynorm_inp'])
         self.dnn_use_batchnorm_inp=strtobool(options['dnn_use_batchnorm_inp'])
         self.dnn_act=options['dnn_act'].split(',')
+        self.to_do = options['to_do']
+
+        self.mlp_hcgs = strtobool(options['mlp_hcgs'])
+        self.hcgs_block = list(map(int, options['hcgs_block'].split(',')))
+        self.hcgs_drop = list(map(float, options['hcgs_drop'].split(',')))
+        self.param_sav = options['out_folder']
+
+        self.mlp_quant = strtobool(options['mlp_quant'])
+        self.param_quant = list(map(int, options['param_quant'].split(',')))
+        self.mlp_quant_inp = strtobool(options['mlp_quant_inp'])
+        self.inp_quant = list(map(int, options['inp_quant'].split(',')))
+
+        self.arch_name = options['arch_name']
+
+        if self.to_do == 'train':
+            self.test_flag = False
+        else:
+            self.test_flag = True
+
+        if (self.to_do == 'forward' or self.to_do == 'valid') and self.arch_name != 'MLP_layers2':
+            self.save_mat = True
+            self.final_quant = True
+            self.final_cgs = True
+        else:
+            self.save_mat = False
+            self.final_quant = False
+            self.final_cgs = False
+
+        # List of CGS
+        if self.mlp_hcgs:
+            self.hcgs = nn.ModuleList([])
         
        
         self.wx  = nn.ModuleList([])
@@ -91,60 +125,91 @@ class MLP(nn.Module):
         
         for i in range(self.N_dnn_lay):
             
-             # dropout
-             self.drop.append(nn.Dropout(p=self.dnn_drop[i]))
-             
-             # activation
-             self.act.append(act_fun(self.dnn_act[i]))
-             
-             
-             add_bias=True
-             
-             # layer norm initialization
-             self.ln.append(LayerNorm(self.dnn_lay[i]))
-             self.bn.append(nn.BatchNorm1d(self.dnn_lay[i],momentum=0.05))
-             
-             if self.dnn_use_laynorm[i] or self.dnn_use_batchnorm[i]:
-                 add_bias=False
-             
-                  
-             # Linear operations
-             self.wx.append(nn.Linear(current_input, self.dnn_lay[i],bias=add_bias))
-             
-             # weight initialization
-             self.wx[i].weight = torch.nn.Parameter(torch.Tensor(self.dnn_lay[i],current_input).uniform_(-np.sqrt(0.01/(current_input+self.dnn_lay[i])),np.sqrt(0.01/(current_input+self.dnn_lay[i]))))
-             self.wx[i].bias = torch.nn.Parameter(torch.zeros(self.dnn_lay[i]))
-             
-             current_input=self.dnn_lay[i]
-             
+            # dropout
+            self.drop.append(nn.Dropout(p=self.dnn_drop[i]))
+
+            # activation
+            self.act.append(act_fun(self.dnn_act[i]))
+
+
+            add_bias=True
+
+            # layer norm initialization
+            self.ln.append(LayerNorm(self.dnn_lay[i]))
+            self.bn.append(nn.BatchNorm1d(self.dnn_lay[i],momentum=0.05))
+
+            if self.dnn_use_laynorm[i] or self.dnn_use_batchnorm[i]:
+                add_bias=False
+
+            # Linear operations
+            # if self.mlp_quant and not self.final_quant:
+            if self.mlp_quant:
+                if self.mlp_quant_inp:
+                    self.wx.append(QuantizeLinear(current_input, self.dnn_lay[i], self.param_quant[i], bias=add_bias, if_forward=self.final_quant, if_inp_quant=True, inp_quant=self.inp_quant[0]))
+                else:
+                    self.wx.append(QuantizeLinear(current_input, self.dnn_lay[i], self.param_quant[i], bias=add_bias, if_forward=self.final_quant))
+            else:
+                self.wx.append(nn.Linear(current_input, self.dnn_lay[i], bias=add_bias))
+
+            # HCGS of Feed-forward connections
+            if self.mlp_hcgs:
+                self.hcgs.append(
+                    HCGS(current_input, self.dnn_lay[i], self.hcgs_block[0], self.hcgs_drop[0], self.hcgs_block[1],
+                         self.hcgs_drop[1], str(i) + '_mlp'))
+
+            # weight initialization
+            self.wx[i].weight = torch.nn.Parameter(torch.Tensor(self.dnn_lay[i],current_input).uniform_(-np.sqrt(0.01/(current_input+self.dnn_lay[i])),np.sqrt(0.01/(current_input+self.dnn_lay[i]))))
+            self.wx[i].bias = torch.nn.Parameter(torch.zeros(self.dnn_lay[i]))
+
+            current_input=self.dnn_lay[i]
+
         self.out_dim=current_input
          
     def forward(self, x):
         
-      # Applying Layer/Batch Norm
-      if bool(self.dnn_use_laynorm_inp):
-        x=self.ln0((x))
+        # Applying Layer/Batch Norm
+        if bool(self.dnn_use_laynorm_inp):
+            x=self.ln0((x))
         
-      if bool(self.dnn_use_batchnorm_inp):
+        if bool(self.dnn_use_batchnorm_inp):
+            x=self.bn0((x))
+        
+        for i in range(self.N_dnn_lay):
 
-        x=self.bn0((x))
-        
-      for i in range(self.N_dnn_lay):
+            # Applying CGS mask
+            if self.mlp_hcgs:
+                self.wx[i].weight.data.mul_(self.hcgs[i].mask.data)
+
+            if self.save_mat:
+                save_cgs_mat.save_mat(self.wx[i].weight.data, str(i) + '_w_mlp', self.param_sav)
+                if self.mlp_hcgs:
+                    save_cgs_mat.save_hcgs_mat(self.hcgs[i].mask.data, str(i) + '_mlp', self.param_sav)
+                if i == (self.N_dnn_lay - 1):
+                    self.save_mat = False
+
+            if self.final_quant and self.mlp_quant:
+                wx_data = Quantize(self.wx[i].weight.data, numBits=self.param_quant[i], if_forward=self.final_quant)
+                # wx_data = QuantizeVar(self.wx[i].weight.data, numBits=self.param_quant[i])
+                save_cgs_mat.save_mat(wx_data, str(i) + '_w_mlp_q', self.param_sav)
+                # self.wx[i].weight.data = Quantize(self.wx[i].weight.data, numBits=self.param_quant[i])
+                # save_cgs_mat.save_mat(self.wx[i].weight.data, str(i) + '_w_mlp_q', self.param_sav)
+                if i == (self.N_dnn_lay - 1):
+                    self.final_quant = False
            
-          if self.dnn_use_laynorm[i] and not(self.dnn_use_batchnorm[i]):
-           x = self.drop[i](self.act[i](self.ln[i](self.wx[i](x))))
+            if self.dnn_use_laynorm[i] and not(self.dnn_use_batchnorm[i]):
+                x = self.drop[i](self.act[i](self.ln[i](self.wx[i](x))))
           
-          if self.dnn_use_batchnorm[i] and not(self.dnn_use_laynorm[i]):
-           x = self.drop[i](self.act[i](self.bn[i](self.wx[i](x))))
+            if self.dnn_use_batchnorm[i] and not(self.dnn_use_laynorm[i]):
+                x = self.drop[i](self.act[i](self.bn[i](self.wx[i](x))))
            
-          if self.dnn_use_batchnorm[i]==True and self.dnn_use_laynorm[i]==True:
-           x = self.drop[i](self.act[i](self.bn[i](self.ln[i](self.wx[i](x)))))
+            if self.dnn_use_batchnorm[i]==True and self.dnn_use_laynorm[i]==True:
+                x = self.drop[i](self.act[i](self.bn[i](self.ln[i](self.wx[i](x)))))
           
-          if self.dnn_use_batchnorm[i]==False and self.dnn_use_laynorm[i]==False:
-           x = self.drop[i](self.act[i](self.wx[i](x)))
+            if self.dnn_use_batchnorm[i]==False and self.dnn_use_laynorm[i]==False:
+                x = self.drop[i](self.act[i](self.wx[i](x)))
             
           
-      return x
+        return x
 
 
 class LSTM_cudnn(nn.Module):
@@ -276,11 +341,37 @@ class LSTM(nn.Module):
         self.bidir=strtobool(options['lstm_bidir'])
         self.use_cuda=strtobool(options['use_cuda'])
         self.to_do=options['to_do']
-        
-        if self.to_do=='train':
-            self.test_flag=False
+
+        self.lstm_hcgs = strtobool(options['lstm_hcgs'])
+        self.hcgsx_block = list(map(int, options['hcgsx_block'].split(',')))
+        self.hcgsh_block = list(map(int, options['hcgsh_block'].split(',')))
+        self.hcgsx_drop = list(map(float, options['hcgsx_drop'].split(',')))
+        self.hcgsh_drop = list(map(float, options['hcgsh_drop'].split(',')))
+        self.param_sav = options['out_folder']
+
+        self.lstm_quant = strtobool(options['lstm_quant'])
+        self.param_quant = list(map(int, options['param_quant'].split(',')))
+        self.lstm_quant_inp = strtobool(options['lstm_quant_inp'])
+        self.inp_quant = list(map(int, options['inp_quant'].split(',')))
+
+        if self.to_do == 'train':
+            self.test_flag = False
         else:
-            self.test_flag=True
+            self.test_flag = True
+
+        if self.to_do == 'forward' or self.to_do == 'valid':
+            self.save_mat = True
+            self.final_quant = True
+            self.final_cgs = True
+        else:
+            self.save_mat = False
+            self.final_quant = False
+            self.final_cgs = False
+
+        # List of CGS
+        if self.lstm_hcgs:
+            self.hcgsx = nn.ModuleList([])
+            self.hcgsh = nn.ModuleList([])
         
         
         # List initialization
@@ -321,47 +412,82 @@ class LSTM(nn.Module):
         
         for i in range(self.N_lstm_lay):
              
-             # Activations
-             self.act.append(act_fun(self.lstm_act[i]))
+            # Activations
+            self.act.append(act_fun(self.lstm_act[i]))
             
-             add_bias=True
+            add_bias=True
+
+            if self.lstm_use_laynorm[i] or self.lstm_use_batchnorm[i]:
+                add_bias=False
+
+            # Feed-forward connections
+            # if self.lstm_quant and not self.final_quant:
+            if self.lstm_quant:
+                if self.lstm_quant_inp:
+                    self.wfx.append(QuantizeLinear(current_input, self.lstm_lay[i], self.param_quant[i], bias=add_bias, if_forward=self.final_quant, if_inp_quant=True, inp_quant=self.inp_quant[0]))
+                    self.wix.append(QuantizeLinear(current_input, self.lstm_lay[i], self.param_quant[i], bias=add_bias, if_forward=self.final_quant, if_inp_quant=True, inp_quant=self.inp_quant[0]))
+                    self.wox.append(QuantizeLinear(current_input, self.lstm_lay[i], self.param_quant[i], bias=add_bias, if_forward=self.final_quant, if_inp_quant=True, inp_quant=self.inp_quant[0]))
+                    self.wcx.append(QuantizeLinear(current_input, self.lstm_lay[i], self.param_quant[i], bias=add_bias, if_forward=self.final_quant, if_inp_quant=True, inp_quant=self.inp_quant[0]))
+                else:
+                    self.wfx.append(QuantizeLinear(current_input, self.lstm_lay[i], self.param_quant[i], bias=add_bias, if_forward=self.final_quant))
+                    self.wix.append(QuantizeLinear(current_input, self.lstm_lay[i], self.param_quant[i], bias=add_bias, if_forward=self.final_quant))
+                    self.wox.append(QuantizeLinear(current_input, self.lstm_lay[i], self.param_quant[i], bias=add_bias, if_forward=self.final_quant))
+                    self.wcx.append(QuantizeLinear(current_input, self.lstm_lay[i], self.param_quant[i], bias=add_bias, if_forward=self.final_quant))
+            else:
+                self.wfx.append(nn.Linear(current_input, self.lstm_lay[i], bias=add_bias))
+                self.wix.append(nn.Linear(current_input, self.lstm_lay[i], bias=add_bias))
+                self.wox.append(nn.Linear(current_input, self.lstm_lay[i], bias=add_bias))
+                self.wcx.append(nn.Linear(current_input, self.lstm_lay[i], bias=add_bias))
+
+            # HCGS of Feed-forward connections
+            if self.lstm_hcgs:
+                self.hcgsx.append(
+                    HCGS(current_input, self.lstm_lay[i], self.hcgsx_block[0], self.hcgsx_drop[0], self.hcgsx_block[1],
+                         self.hcgsx_drop[1], str(i) + '_x'))
+
+            # Recurrent connections
+            # if self.lstm_quant and not self.final_quant:
+            if self.lstm_quant:
+                if self.lstm_quant_inp:
+                    self.ufh.append(QuantizeLinear(self.lstm_lay[i], self.lstm_lay[i], self.param_quant[i], bias=False, if_forward=self.final_quant, if_inp_quant=True, inp_quant=self.inp_quant[0]))
+                    self.uih.append(QuantizeLinear(self.lstm_lay[i], self.lstm_lay[i], self.param_quant[i], bias=False, if_forward=self.final_quant, if_inp_quant=True, inp_quant=self.inp_quant[0]))
+                    self.uoh.append(QuantizeLinear(self.lstm_lay[i], self.lstm_lay[i], self.param_quant[i], bias=False, if_forward=self.final_quant, if_inp_quant=True, inp_quant=self.inp_quant[0]))
+                    self.uch.append(QuantizeLinear(self.lstm_lay[i], self.lstm_lay[i], self.param_quant[i], bias=False, if_forward=self.final_quant, if_inp_quant=True, inp_quant=self.inp_quant[0]))
+                else:
+                    self.ufh.append(QuantizeLinear(self.lstm_lay[i], self.lstm_lay[i], self.param_quant[i], bias=False, if_forward=self.final_quant))
+                    self.uih.append(QuantizeLinear(self.lstm_lay[i], self.lstm_lay[i], self.param_quant[i], bias=False, if_forward=self.final_quant))
+                    self.uoh.append(QuantizeLinear(self.lstm_lay[i], self.lstm_lay[i], self.param_quant[i], bias=False, if_forward=self.final_quant))
+                    self.uch.append(QuantizeLinear(self.lstm_lay[i], self.lstm_lay[i], self.param_quant[i], bias=False, if_forward=self.final_quant))
+            else:
+                self.ufh.append(nn.Linear(self.lstm_lay[i], self.lstm_lay[i], bias=False))
+                self.uih.append(nn.Linear(self.lstm_lay[i], self.lstm_lay[i], bias=False))
+                self.uoh.append(nn.Linear(self.lstm_lay[i], self.lstm_lay[i], bias=False))
+                self.uch.append(nn.Linear(self.lstm_lay[i], self.lstm_lay[i], bias=False))
+
+            # HCGS of Recurrent connections
+            if self.lstm_hcgs:
+                self.hcgsh.append(HCGS(self.lstm_lay[i], self.lstm_lay[i], self.hcgsh_block[0], self.hcgsh_drop[0],
+                                       self.hcgsh_block[1], self.hcgsh_drop[1], str(i) + '_h'))
              
-             
-             if self.lstm_use_laynorm[i] or self.lstm_use_batchnorm[i]:
-                 add_bias=False
-             
-                  
-             # Feed-forward connections
-             self.wfx.append(nn.Linear(current_input, self.lstm_lay[i],bias=add_bias))
-             self.wix.append(nn.Linear(current_input, self.lstm_lay[i],bias=add_bias))
-             self.wox.append(nn.Linear(current_input, self.lstm_lay[i],bias=add_bias))
-             self.wcx.append(nn.Linear(current_input, self.lstm_lay[i],bias=add_bias))
+            if self.lstm_orthinit:
+               nn.init.orthogonal_(self.ufh[i].weight)
+               nn.init.orthogonal_(self.uih[i].weight)
+               nn.init.orthogonal_(self.uoh[i].weight)
+               nn.init.orthogonal_(self.uch[i].weight)
             
-             # Recurrent connections
-             self.ufh.append(nn.Linear(self.lstm_lay[i], self.lstm_lay[i],bias=False))
-             self.uih.append(nn.Linear(self.lstm_lay[i], self.lstm_lay[i],bias=False))
-             self.uoh.append(nn.Linear(self.lstm_lay[i], self.lstm_lay[i],bias=False))
-             self.uch.append(nn.Linear(self.lstm_lay[i], self.lstm_lay[i],bias=False))
              
-             if self.lstm_orthinit:
-                nn.init.orthogonal_(self.ufh[i].weight)
-                nn.init.orthogonal_(self.uih[i].weight)
-                nn.init.orthogonal_(self.uoh[i].weight)
-                nn.init.orthogonal_(self.uch[i].weight)
-            
-             
-             # batch norm initialization
-             self.bn_wfx.append(nn.BatchNorm1d(self.lstm_lay[i],momentum=0.05))
-             self.bn_wix.append(nn.BatchNorm1d(self.lstm_lay[i],momentum=0.05))
-             self.bn_wox.append(nn.BatchNorm1d(self.lstm_lay[i],momentum=0.05))
-             self.bn_wcx.append(nn.BatchNorm1d(self.lstm_lay[i],momentum=0.05))
+            # batch norm initialization
+            self.bn_wfx.append(nn.BatchNorm1d(self.lstm_lay[i],momentum=0.05))
+            self.bn_wix.append(nn.BatchNorm1d(self.lstm_lay[i],momentum=0.05))
+            self.bn_wox.append(nn.BatchNorm1d(self.lstm_lay[i],momentum=0.05))
+            self.bn_wcx.append(nn.BatchNorm1d(self.lstm_lay[i],momentum=0.05))
                 
-             self.ln.append(LayerNorm(self.lstm_lay[i]))
+            self.ln.append(LayerNorm(self.lstm_lay[i]))
                 
-             if self.bidir:
-                 current_input=2*self.lstm_lay[i]
-             else:
-                 current_input=self.lstm_lay[i]
+            if self.bidir:
+                current_input=2*self.lstm_lay[i]
+            else:
+                current_input=self.lstm_lay[i]
                  
         self.out_dim=self.lstm_lay[i]+self.bidir*self.lstm_lay[i]
             
@@ -386,7 +512,6 @@ class LSTM(nn.Module):
                 x=torch.cat([x,flip(x,0)],1)
             else:
                 h_init = torch.zeros(x.shape[1],self.lstm_lay[i])
-        
                
             # Drop mask initilization (same mask for all time steps)            
             if self.test_flag==False:
@@ -395,9 +520,33 @@ class LSTM(nn.Module):
                 drop_mask=torch.FloatTensor([1-self.lstm_drop[i]])
                 
             if self.use_cuda:
-               h_init=h_init.cuda()
-               drop_mask=drop_mask.cuda()
-               
+                h_init=h_init.cuda()
+                drop_mask=drop_mask.cuda()
+
+            # Applying CGS mask
+            if self.lstm_hcgs:
+                self.wfx[i].weight.data.mul_(self.hcgsx[i].mask.data)
+                self.wix[i].weight.data.mul_(self.hcgsx[i].mask.data)
+                self.wox[i].weight.data.mul_(self.hcgsx[i].mask.data)
+                self.wcx[i].weight.data.mul_(self.hcgsx[i].mask.data)
+
+            if self.save_mat:
+                save_cgs_mat.save_mat(self.wfx[i].weight.data, str(i) + '_wfx', self.param_sav)
+                save_cgs_mat.save_mat(self.wix[i].weight.data, str(i) + '_wix', self.param_sav)
+                save_cgs_mat.save_mat(self.wox[i].weight.data, str(i) + '_wox', self.param_sav)
+                save_cgs_mat.save_mat(self.wcx[i].weight.data, str(i) + '_wcx', self.param_sav)
+                if self.lstm_hcgs:
+                    save_cgs_mat.save_hcgs_mat(self.hcgsx[i].mask.data, str(i) + '_x', self.param_sav)
+
+            if self.final_quant and self.lstm_quant:
+                wfx_data = Quantize(self.wfx[i].weight.data, numBits=self.param_quant[i], if_forward=self.final_quant)
+                wix_data = Quantize(self.wix[i].weight.data, numBits=self.param_quant[i], if_forward=self.final_quant)
+                wox_data = Quantize(self.wox[i].weight.data, numBits=self.param_quant[i], if_forward=self.final_quant)
+                wcx_data = Quantize(self.wcx[i].weight.data, numBits=self.param_quant[i], if_forward=self.final_quant)
+                save_cgs_mat.save_mat(wfx_data, str(i) + '_wfx_q', self.param_sav)
+                save_cgs_mat.save_mat(wix_data, str(i) + '_wix_q', self.param_sav)
+                save_cgs_mat.save_mat(wox_data, str(i) + '_wox_q', self.param_sav)
+                save_cgs_mat.save_mat(wcx_data, str(i) + '_wcx_q', self.param_sav)
                  
             # Feed-forward affine transformations (all steps in parallel)
             wfx_out=self.wfx[i](x)
@@ -408,51 +557,78 @@ class LSTM(nn.Module):
             # Apply batch norm if needed (all steos in parallel)
             if self.lstm_use_batchnorm[i]:
 
-                wfx_out_bn=self.bn_wfx[i](wfx_out.view(wfx_out.shape[0]*wfx_out.shape[1],wfx_out.shape[2]))
-                wfx_out=wfx_out_bn.view(wfx_out.shape[0],wfx_out.shape[1],wfx_out.shape[2])
+                wfx_out_bn = self.bn_wfx[i](wfx_out.view(wfx_out.shape[0]*wfx_out.shape[1],wfx_out.shape[2]))
+                wfx_out = wfx_out_bn.view(wfx_out.shape[0],wfx_out.shape[1],wfx_out.shape[2])
          
-                wix_out_bn=self.bn_wix[i](wix_out.view(wix_out.shape[0]*wix_out.shape[1],wix_out.shape[2]))
-                wix_out=wix_out_bn.view(wix_out.shape[0],wix_out.shape[1],wix_out.shape[2])
+                wix_out_bn = self.bn_wix[i](wix_out.view(wix_out.shape[0]*wix_out.shape[1],wix_out.shape[2]))
+                wix_out = wix_out_bn.view(wix_out.shape[0],wix_out.shape[1],wix_out.shape[2])
    
-                wox_out_bn=self.bn_wox[i](wox_out.view(wox_out.shape[0]*wox_out.shape[1],wox_out.shape[2]))
-                wox_out=wox_out_bn.view(wox_out.shape[0],wox_out.shape[1],wox_out.shape[2])
+                wox_out_bn = self.bn_wox[i](wox_out.view(wox_out.shape[0]*wox_out.shape[1],wox_out.shape[2]))
+                wox_out = wox_out_bn.view(wox_out.shape[0],wox_out.shape[1],wox_out.shape[2])
 
-                wcx_out_bn=self.bn_wcx[i](wcx_out.view(wcx_out.shape[0]*wcx_out.shape[1],wcx_out.shape[2]))
-                wcx_out=wcx_out_bn.view(wcx_out.shape[0],wcx_out.shape[1],wcx_out.shape[2]) 
-            
+                wcx_out_bn = self.bn_wcx[i](wcx_out.view(wcx_out.shape[0]*wcx_out.shape[1],wcx_out.shape[2]))
+                wcx_out = wcx_out_bn.view(wcx_out.shape[0],wcx_out.shape[1],wcx_out.shape[2])
+
+            # Applying CGS mask
+            if self.lstm_hcgs:
+                self.ufh[i].weight.data.mul_(self.hcgsh[i].mask.data)
+                self.uih[i].weight.data.mul_(self.hcgsh[i].mask.data)
+                self.uoh[i].weight.data.mul_(self.hcgsh[i].mask.data)
+                self.uch[i].weight.data.mul_(self.hcgsh[i].mask.data)
+
+            if self.save_mat:
+                save_cgs_mat.save_mat(self.ufh[i].weight.data, str(i) + '_wfh', self.param_sav)
+                save_cgs_mat.save_mat(self.uih[i].weight.data, str(i) + '_wih', self.param_sav)
+                save_cgs_mat.save_mat(self.uoh[i].weight.data, str(i) + '_woh', self.param_sav)
+                save_cgs_mat.save_mat(self.uch[i].weight.data, str(i) + '_wch', self.param_sav)
+                if self.lstm_hcgs:
+                    save_cgs_mat.save_hcgs_mat(self.hcgsh[i].mask.data, str(i) + '_h', self.param_sav)
+                if i == (self.N_lstm_lay - 1):
+                    self.save_mat = False
+
+            if self.final_quant and self.lstm_quant:
+                ufh_data = Quantize(self.ufh[i].weight.data, numBits=self.param_quant[i], if_forward=self.final_quant)
+                uih_data = Quantize(self.uih[i].weight.data, numBits=self.param_quant[i], if_forward=self.final_quant)
+                uoh_data = Quantize(self.uoh[i].weight.data, numBits=self.param_quant[i], if_forward=self.final_quant)
+                uch_data = Quantize(self.uch[i].weight.data, numBits=self.param_quant[i], if_forward=self.final_quant)
+                save_cgs_mat.save_mat(ufh_data, str(i) + '_wfh_q', self.param_sav)
+                save_cgs_mat.save_mat(uih_data, str(i) + '_wih_q', self.param_sav)
+                save_cgs_mat.save_mat(uoh_data, str(i) + '_woh_q', self.param_sav)
+                save_cgs_mat.save_mat(uch_data, str(i) + '_wch_q', self.param_sav)
+                if i == (self.N_lstm_lay - 1):
+                    self.final_quant = False
             
             # Processing time steps
             hiddens = []
-            ct=h_init
-            ht=h_init
+            ct = h_init
+            ht = h_init
             
             for k in range(x.shape[0]):
                 
                 # LSTM equations
-                ft=torch.sigmoid(wfx_out[k]+self.ufh[i](ht))
-                it=torch.sigmoid(wix_out[k]+self.uih[i](ht))
-                ot=torch.sigmoid(wox_out[k]+self.uoh[i](ht))
-                ct=it*self.act[i](wcx_out[k]+self.uch[i](ht))*drop_mask+ft*ct
-                ht=ot*self.act[i](ct)
+                ft = torch.sigmoid(wfx_out[k]+self.ufh[i](ht))
+                it = torch.sigmoid(wix_out[k]+self.uih[i](ht))
+                ot = torch.sigmoid(wox_out[k]+self.uoh[i](ht))
+                ct = it*self.act[i](wcx_out[k]+self.uch[i](ht))*drop_mask+ft*ct
+                ht = ot*self.act[i](ct)
                 
                 if self.lstm_use_laynorm[i]:
-                    ht=self.ln[i](ht)
+                    ht = self.ln[i](ht)
                     
                 hiddens.append(ht)
                 
             # Stacking hidden states
-            h=torch.stack(hiddens)
+            h = torch.stack(hiddens)
             
             # Bidirectional concatenations
             if self.bidir:
-                h_f=h[:,0:int(x.shape[1]/2)]
-                h_b=flip(h[:,int(x.shape[1]/2):x.shape[1]].contiguous(),0)
-                h=torch.cat([h_f,h_b],2)
+                h_f = h[:,0:int(x.shape[1]/2)]
+                h_b = flip(h[:,int(x.shape[1]/2):x.shape[1]].contiguous(),0)
+                h = torch.cat([h_f,h_b],2)
                 
             # Setup x for the next hidden layer
-            x=h
+            x = h
 
-              
         return x
     
 class GRU(nn.Module):
