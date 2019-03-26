@@ -21,6 +21,58 @@ import torch.optim as optim
 import math
 
 
+def l1_norm(model):
+    l1_reg = torch.tensor(0, dtype=torch.float32).cuda()
+    for key in model:
+        for param in model[key].parameters():
+            dim = param.size()
+            if dim.__len__() > 1:
+                l1_reg += torch.norm(param, 1)
+    return l1_reg * 0.00008
+
+# def gl_norm(model, num_blk):
+#     gl_reg = torch.tensor(0., dtype=torch.float32).cuda()
+#     all_params = []
+#     for param in model.parameters():
+#         all_params.append(param)
+#     i = 0
+#     j = 0
+#     for param in all_params:
+#         dim = param.size()
+#         if dim.__len__() > 1:
+#             div1 = list(torch.chunk(all_params[i],num_blk,1))
+#             all_blks = []
+#             for div2 in div1:
+#                 temp = list(torch.chunk(div2,num_blk,0))
+#                 for blk in temp:
+#                     all_blks.append(blk)
+#             for l2_param in all_blks:
+#                 gl_reg += torch.norm(l2_param, 2)
+#             j += 1
+#         i += 1
+#     return gl_reg * 0.005
+
+def gl_norm(model, num_blk):
+    gl_reg = torch.tensor(0., dtype=torch.float32).cuda()
+    for key in model:
+        i = 0
+        j = 0
+        for param in model[key].parameters():
+            dim = param.size()
+            if dim.__len__() > 1:
+                div1 = list(torch.chunk(param,num_blk,1))
+                all_blks = []
+                for div2 in div1:
+                    temp = list(torch.chunk(div2,num_blk,0))
+                    for blk in temp:
+                        all_blks.append(blk)
+                for l2_param in all_blks:
+                    gl_reg += torch.norm(l2_param, 2)
+                j += 1
+            i += 1
+    return gl_reg * 0.01
+
+
 def run_command(cmd):
     """from http://blog.kagesenshi.org/2008/02/teeing-python-subprocesspopen-output.html
     """
@@ -1714,6 +1766,12 @@ def model_init(inp_out_dict, model, config, arch_dict, use_cuda, multi_gpu, to_d
         if operation == 'cost_err':
             inp_out_dict[out_name] = [1]
 
+        if operation == 'cost_l1':
+            inp_out_dict[out_name] = [1]
+
+        if operation == 'cost_gl':
+            inp_out_dict[out_name] = [1]
+
         if operation == 'mult' or operation == 'sum' or operation == 'mult_constant' or operation == 'sum_constant' or operation == 'avg' or operation == 'mse':
             inp_out_dict[out_name] = inp_out_dict[inp1]
 
@@ -1837,6 +1895,14 @@ def forward_model(fea_dict, lab_dict, arch_dict, model, nns, costs, inp, inp_out
             if to_do != 'forward':
                 outs_dict[out_name] = costs[out_name](out, lab_dnn)
 
+        if operation == 'cost_l1':
+            if to_do != 'forward':
+                outs_dict[out_name] = l1_norm(nns)
+
+        if operation == 'cost_gl':
+            if to_do != 'forward':
+                outs_dict[out_name] = gl_norm(nns, 32)
+
         if operation == 'cost_err':
 
             if len(inp.shape) == 3:
@@ -1903,7 +1969,7 @@ def dump_epoch_results(res_file_path, ep, tr_data_lst, tr_loss_tot, tr_error_tot
     # Default terminal line size is 80 characters, try new dispositions to fit this limit
     #
 
-    N_ep_str_format = '0' + str(max(math.ceil(np.log10(N_ep)), 1)) + 'd'
+    N_ep_str_format = '0' + str(int(max(math.ceil(np.log10(N_ep)), 1))) + 'd'
     res_file = open(res_file_path, "a")
     res_file.write('ep=%s tr=%s loss=%s err=%s ' % (
     format(ep, N_ep_str_format), tr_data_lst, format(tr_loss_tot / len(tr_data_lst), "0.3f"),

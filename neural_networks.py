@@ -14,7 +14,7 @@ from distutils.util import strtobool
 import math
 import save_cgs_mat
 from HCGS import HCGS as HCGS
-from quantized_modules import BinarizeLinear, QuantizeLinear, Quantize, QuantizeVar
+from quantized_modules import BinarizeLinear, QuantizeLinear, Quantize, QuantizeVar, prune
 
 
 class LayerNorm(nn.Module):
@@ -355,6 +355,8 @@ class LSTM(nn.Module):
             self.final_quant = False
             self.final_cgs = False
 
+        self.prune = True
+
         # List of CGS
         if self.lstm_hcgs:
             self.hcgsx = nn.ModuleList([])
@@ -537,6 +539,12 @@ class LSTM(nn.Module):
                 h_init = h_init.cuda()
                 drop_mask = drop_mask.cuda()
 
+            # if self.to_do == 'forward'and self.prune == True:
+            #     self.wfx[i].weight.data = prune(self.wfx[i].weight.data, 0.001)
+            #     self.wix[i].weight.data = prune(self.wix[i].weight.data, 0.001)
+            #     self.wox[i].weight.data = prune(self.wox[i].weight.data, 0.001)
+            #     self.wcx[i].weight.data = prune(self.wcx[i].weight.data, 0.001)
+
             # Applying CGS mask
             if self.lstm_hcgs:
                 self.wfx[i].weight.data.mul_(self.hcgsx[i].mask.data)
@@ -581,6 +589,13 @@ class LSTM(nn.Module):
 
                 wcx_out_bn = self.bn_wcx[i](wcx_out.view(wcx_out.shape[0] * wcx_out.shape[1], wcx_out.shape[2]))
                 wcx_out = wcx_out_bn.view(wcx_out.shape[0], wcx_out.shape[1], wcx_out.shape[2])
+
+            # if self.to_do == 'forward' and self.prune == True:
+            #     self.ufh[i].weight.data = prune(self.ufh[i].weight.data, 0.001)
+            #     self.uih[i].weight.data = prune(self.uih[i].weight.data, 0.001)
+            #     self.uoh[i].weight.data = prune(self.uoh[i].weight.data, 0.001)
+            #     self.uch[i].weight.data = prune(self.uch[i].weight.data, 0.001)
+            #     self.prune = False
 
             # Applying CGS mask
             if self.lstm_hcgs:

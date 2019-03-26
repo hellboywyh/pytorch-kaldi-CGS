@@ -2,9 +2,14 @@
 <project version="4">
   <component name="ChangeListManager">
     <list default="true" id="94de51ad-8d1d-41a3-818d-0ec9c10ebe6b" name="Default Changelist" comment="">
-      <change afterPath="$PROJECT_DIR$/cfg/TIMIT_CGS/TIMIT_CNN_LSTM_fmllr.cfg" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/test.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/cfg/TIMIT_CGS/TIMIT_CNN_LSTM_fmllr.cfg" beforeDir="false" afterPath="$PROJECT_DIR$/cfg/TIMIT_CGS/TIMIT_CNN_LSTM_fmllr.cfg" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/cfg/TIMIT_CGS/TIMIT_LSTM_fmllr.cfg" beforeDir="false" afterPath="$PROJECT_DIR$/cfg/TIMIT_CGS/TIMIT_LSTM_fmllr.cfg" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/neural_networks.py" beforeDir="false" afterPath="$PROJECT_DIR$/neural_networks.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/proto/model.proto" beforeDir="false" afterPath="$PROJECT_DIR$/proto/model.proto" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/quantized_modules.py" beforeDir="false" afterPath="$PROJECT_DIR$/quantized_modules.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/utils.py" beforeDir="false" afterPath="$PROJECT_DIR$/utils.py" afterDir="false" />
     </list>
     <option name="EXCLUDED_CONVERTED_TO_IGNORED" value="true" />
     <option name="SHOW_DIALOG" value="false" />
@@ -13,32 +18,81 @@
     <option name="LAST_RESOLUTION" value="IGNORE" />
   </component>
   <component name="FileEditorManager">
-    <leaf>
+    <leaf SIDE_TABS_SIZE_LIMIT_KEY="300">
+      <file pinned="false" current-in-tab="true">
+        <entry file="file://$PROJECT_DIR$/utils.py">
+          <provider selected="true" editor-type-id="text-editor">
+            <state relative-caret-position="347">
+              <caret line="73" lean-forward="true" selection-start-line="73" selection-end-line="73" />
+              <folding>
+                <element signature="e#262#281#0" expanded="true" />
+                <element signature="e#755#785#0" />
+              </folding>
+            </state>
+          </provider>
+        </entry>
+      </file>
+      <file pinned="false" current-in-tab="false">
+        <entry file="file://$PROJECT_DIR$/proto/model.proto">
+          <provider selected="true" editor-type-id="text-editor">
+            <state relative-caret-position="90">
+              <caret line="6" column="20" selection-start-line="5" selection-end-line="6" selection-end-column="20" />
+            </state>
+          </provider>
+        </entry>
+      </file>
+      <file pinned="false" current-in-tab="false">
+        <entry file="file://$PROJECT_DIR$/run_exp.py">
+          <provider selected="true" editor-type-id="text-editor">
+            <state relative-caret-position="178">
+              <caret line="299" column="27" selection-start-line="299" selection-start-column="22" selection-end-line="299" selection-end-column="27" />
+              <folding>
+                <element signature="e#263#300#0" expanded="true" />
+              </folding>
+            </state>
+          </provider>
+        </entry>
+      </file>
+      <file pinned="false" current-in-tab="false">
+        <entry file="file://$PROJECT_DIR$/core.py">
+          <provider selected="true" editor-type-id="text-editor">
+            <state relative-caret-position="178">
+              <caret line="100" column="49" selection-start-line="100" selection-start-column="44" selection-end-line="100" selection-end-column="49" />
+              <folding>
+                <element signature="e#262#272#0" expanded="true" />
+              </folding>
+            </state>
+          </provider>
+        </entry>
+      </file>
       <file pinned="false" current-in-tab="false">
         <entry file="file://$PROJECT_DIR$/cfg/TIMIT_CGS/TIMIT_LSTM_fmllr.cfg">
           <provider selected="true" editor-type-id="text-editor">
-            <state relative-caret-position="120">
-              <caret line="44" column="65" selection-end-line="267" />
+            <state relative-caret-position="105">
+              <caret line="7" column="43" selection-start-line="7" selection-start-column="43" selection-end-line="7" selection-end-column="43" />
             </state>
           </provider>
         </entry>
       </file>
       <file pinned="false" current-in-tab="false">
-        <entry file="file://$PROJECT_DIR$/cfg/TIMIT_CGS/TIMIT_CNN_LSTM_fmllr.cfg">
+        <entry file="file://$PROJECT_DIR$/neural_networks.py">
           <provider selected="true" editor-type-id="text-editor">
-            <state relative-caret-position="105">
-              <caret line="7" column="27" selection-start-line="7" selection-start-column="27" selection-end-line="7" selection-end-column="27" />
+            <state relative-caret-position="26280">
+              <caret line="1752" column="68" selection-start-line="1752" selection-start-column="68" selection-end-line="1752" selection-end-column="68" />
+              <folding>
+                <element signature="e#263#275#0" expanded="true" />
+              </folding>
             </state>
           </provider>
         </entry>
       </file>
-      <file pinned="false" current-in-tab="true">
-        <entry file="file://$PROJECT_DIR$/neural_networks.py">
+      <file pinned="false" current-in-tab="false">
+        <entry file="file://$PROJECT_DIR$/quantized_modules.py">
           <provider selected="true" editor-type-id="text-editor">
-            <state relative-caret-position="-839">
-              <caret line="1297" column="72" selection-start-line="1297" selection-start-column="72" selection-end-line="1297" selection-end-column="72" />
+            <state relative-caret-position="-1632">
+              <caret line="19" column="12" selection-start-line="19" selection-start-column="12" selection-end-line="19" selection-end-column="12" />
               <folding>
-                <element signature="e#263#275#0" expanded="true" />
+                <element signature="e#0#12#0" expanded="true" />
               </folding>
             </state>
           </provider>
@@ -59,6 +113,25 @@
       <find>'out_folder'</find>
       <find>getresults.sh</find>
       <find>getresults</find>
+      <find>class CNN</find>
+      <find>CNN</find>
+      <find>optimizers</find>
+      <find>int(max</find>
+      <find>NLL</find>
+      <find>costs</find>
+      <find>nns</find>
+      <find>cost_nll</find>
+      <find>class lstm</find>
+      <find>self.to_do</find>
+      <find>to_do</find>
+      <find>l1</find>
+      <find>prune</find>
+      <find>l1_norm</find>
+      <find>act_fun</find>
+      <find>gl_norm</find>
+      <find>flip</find>
+      <find>model</find>
+      <find>cost_l1</find>
     </findStrings>
   </component>
   <component name="Git.Settings">
@@ -72,17 +145,21 @@
         <option value="$PROJECT_DIR$/HCGS.py" />
         <option value="$PROJECT_DIR$/save_cgs_mat.py" />
         <option value="$PROJECT_DIR$/getresults.sh" />
-        <option value="$PROJECT_DIR$/neural_networks.py" />
-        <option value="$PROJECT_DIR$/quantized_modules.py" />
-        <option value="$PROJECT_DIR$/cfg/TIMIT_CGS/TIMIT_LSTM_fmllr.cfg" />
         <option value="$PROJECT_DIR$/cfg/TIMIT_CGS/TIMIT_CNN_LSTM_fmllr.cfg" />
+        <option value="$PROJECT_DIR$/L1_norm.py" />
+        <option value="$PROJECT_DIR$/quantized_modules.py" />
+        <option value="$PROJECT_DIR$/neural_networks.py" />
+        <option value="$PROJECT_DIR$/test.py" />
+        <option value="$PROJECT_DIR$/proto/model.proto" />
+        <option value="$PROJECT_DIR$/cfg/TIMIT_CGS/TIMIT_LSTM_fmllr.cfg" />
+        <option value="$PROJECT_DIR$/utils.py" />
       </list>
     </option>
   </component>
-  <component name="ProjectFrameBounds">
-    <option name="y" value="23" />
-    <option name="width" value="1536" />
-    <option name="height" value="801" />
+  <component name="ProjectFrameBounds" extendedState="6">
+    <option name="y" value="28" />
+    <option name="width" value="1920" />
+    <option name="height" value="1017" />
   </component>
   <component name="ProjectLevelVcsManager">
     <ConfirmationsSetting value="2" id="Add" />
@@ -92,7 +169,6 @@
       <foldersAlwaysOnTop value="true" />
     </navigator>
     <panes>
-      <pane id="Scope" />
       <pane id="ProjectPane">
         <subPane>
           <expand>
@@ -100,25 +176,15 @@
               <item name="pytorch-kaldi-CGS" type="b2602c69:ProjectViewProjectNode" />
               <item name="pytorch-kaldi-CGS" type="462c0819:PsiDirectoryNode" />
             </path>
-            <path>
-              <item name="pytorch-kaldi-CGS" type="b2602c69:ProjectViewProjectNode" />
-              <item name="pytorch-kaldi-CGS" type="462c0819:PsiDirectoryNode" />
-              <item name="cfg" type="462c0819:PsiDirectoryNode" />
-            </path>
-            <path>
-              <item name="pytorch-kaldi-CGS" type="b2602c69:ProjectViewProjectNode" />
-              <item name="pytorch-kaldi-CGS" type="462c0819:PsiDirectoryNode" />
-              <item name="cfg" type="462c0819:PsiDirectoryNode" />
-              <item name="TIMIT_CGS" type="462c0819:PsiDirectoryNode" />
-            </path>
           </expand>
           <select />
         </subPane>
       </pane>
+      <pane id="Scope" />
     </panes>
   </component>
   <component name="PropertiesComponent">
-    <property name="last_opened_file_path" value="$PROJECT_DIR$/../pytorch-kaldi" />
+    <property name="last_opened_file_path" value="$PROJECT_DIR$" />
     <property name="settings.editor.selected.configurable" value="com.jetbrains.python.configuration.PyActiveSdkModuleConfigurable" />
   </component>
   <component name="RunDashboard">
@@ -147,7 +213,7 @@
       <option name="ADD_CONTENT_ROOTS" value="true" />
       <option name="ADD_SOURCE_ROOTS" value="true" />
       <option name="SCRIPT_NAME" value="$PROJECT_DIR$/run_exp.py" />
-      <option name="PARAMETERS" value="cfg/TIMIT_CGS/TIMIT_CNN_LSTM_fmllr.cfg" />
+      <option name="PARAMETERS" value="cfg/TIMIT_CGS/TIMIT_LSTM_fmllr.cfg" />
       <option name="SHOW_COMMAND_LINE" value="false" />
       <option name="EMULATE_TERMINAL" value="false" />
       <option name="MODULE_MODE" value="false" />
@@ -174,23 +240,33 @@
     </task>
     <servers />
   </component>
+  <component name="TodoView">
+    <todo-panel id="selected-file">
+      <is-autoscroll-to-source value="true" />
+    </todo-panel>
+    <todo-panel id="all">
+      <are-packages-shown value="true" />
+      <is-autoscroll-to-source value="true" />
+    </todo-panel>
+  </component>
   <component name="ToolWindowManager">
-    <frame x="0" y="23" width="1536" height="801" extended-state="0" />
+    <frame x="-1" y="24" width="1922" height="1033" extended-state="6" />
+    <editor active="true" />
     <layout>
-      <window_info content_ui="combo" id="Project" order="0" visible="true" weight="0.2270627" />
+      <window_info content_ui="combo" id="Project" order="0" visible="true" weight="0.18028466" />
       <window_info id="Structure" order="1" side_tool="true" weight="0.25" />
       <window_info id="Favorites" order="2" side_tool="true" />
       <window_info anchor="bottom" id="Message" order="0" />
       <window_info anchor="bottom" id="Find" order="1" />
-      <window_info active="true" anchor="bottom" id="Run" order="2" visible="true" weight="0.42857143" />
-      <window_info anchor="bottom" id="Debug" order="3" weight="0.3997833" />
+      <window_info anchor="bottom" id="Run" order="2" weight="0.42762432" />
+      <window_info anchor="bottom" id="Debug" order="3" weight="0.39116022" />
       <window_info anchor="bottom" id="Cvs" order="4" weight="0.25" />
       <window_info anchor="bottom" id="Inspection" order="5" weight="0.4" />
-      <window_info anchor="bottom" id="TODO" order="6" />
-      <window_info anchor="bottom" id="Version Control" order="7" />
-      <window_info anchor="bottom" id="Terminal" order="8" weight="0.3206934" />
+      <window_info anchor="bottom" id="TODO" order="6" weight="0.32936078" />
+      <window_info anchor="bottom" id="Version Control" order="7" weight="0.32936078" />
+      <window_info active="true" anchor="bottom" id="Terminal" order="8" visible="true" weight="0.31823203" />
       <window_info anchor="bottom" id="Event Log" order="9" side_tool="true" />
-      <window_info anchor="bottom" id="Python Console" order="10" />
+      <window_info anchor="bottom" id="Python Console" order="10" weight="0.32928178" />
       <window_info anchor="right" id="Commander" internal_type="SLIDING" order="0" type="SLIDING" weight="0.4" />
       <window_info anchor="right" id="Ant Build" order="1" weight="0.25" />
       <window_info anchor="right" content_ui="combo" id="Hierarchy" order="2" weight="0.25" />
@@ -211,16 +287,6 @@
       <provider selected="true" editor-type-id="text-editor">
         <state relative-caret-position="60">
           <caret line="4" column="34" lean-forward="true" selection-start-line="4" selection-start-column="34" selection-end-line="4" selection-end-column="34" />
-        </state>
-      </provider>
-    </entry>
-    <entry file="file://$PROJECT_DIR$/HCGS.py">
-      <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="585">
-          <caret line="39" lean-forward="true" selection-start-line="39" selection-end-line="39" />
-          <folding>
-            <element signature="e#0#11#0" expanded="true" />
-          </folding>
         </state>
       </provider>
     </entry>
@@ -249,46 +315,8 @@
         <state relative-caret-position="-3247" />
       </provider>
     </entry>
-    <entry file="file://$PROJECT_DIR$/utils.py">
-      <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="-22529">
-          <caret line="273" column="7" selection-start-line="273" selection-start-column="7" selection-end-line="273" selection-end-column="7" />
-        </state>
-      </provider>
-    </entry>
-    <entry file="file://$PROJECT_DIR$/run_exp.py">
-      <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="-3524">
-          <caret line="81" column="12" selection-start-line="81" selection-start-column="12" selection-end-line="81" selection-end-column="12" />
-          <folding>
-            <element signature="e#264#301#0" expanded="true" />
-          </folding>
-        </state>
-      </provider>
-    </entry>
-    <entry file="file://$PROJECT_DIR$/run_nn.py">
-      <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="175">
-          <caret line="170" column="14" selection-start-line="170" selection-start-column="14" selection-end-line="170" selection-end-column="14" />
-          <folding>
-            <element signature="e#262#272#0" expanded="true" />
-          </folding>
-        </state>
-      </provider>
-    </entry>
-    <entry file="file://$PROJECT_DIR$/quantized_modules.py">
-      <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="284">
-          <caret line="122" column="35" selection-start-line="122" selection-start-column="35" selection-end-line="122" selection-end-column="35" />
-          <folding>
-            <element signature="e#0#12#0" expanded="true" />
-          </folding>
-        </state>
-      </provider>
-    </entry>
-    <entry file="file://$PROJECT_DIR$/cfg/TIMIT_baselines/TIMIT_LSTM_fmllr.cfg">
-      <provider selected="true" editor-type-id="text-editor" />
-    </entry>
+    <entry file="file://$PROJECT_DIR$/run_nn.py" />
+    <entry file="file://$PROJECT_DIR$/cfg/TIMIT_baselines/TIMIT_LSTM_fmllr.cfg" />
     <entry file="file://$PROJECT_DIR$/cfg/LibriSpeech_CGS/libri_LSTM_fmllr_460.cfg">
       <provider selected="true" editor-type-id="text-editor">
         <state relative-caret-position="180">
@@ -296,26 +324,119 @@
         </state>
       </provider>
     </entry>
-    <entry file="file://$PROJECT_DIR$/cfg/TIMIT_CGS/TIMIT_LSTM_fmllr.cfg">
+    <entry file="file://$PROJECT_DIR$/../anaconda2/lib/python2.7/site-packages/torch/nn/functional.py">
       <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="120">
-          <caret line="44" column="65" selection-end-line="267" />
+        <state relative-caret-position="266">
+          <caret line="1735" column="4" selection-start-line="1735" selection-start-column="4" selection-end-line="1735" selection-end-column="4" />
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/L1_norm.py" />
+    <entry file="file://$PROJECT_DIR$/../anaconda2/lib/python2.7/site-packages/torch/nn/modules/loss.py">
+      <provider selected="true" editor-type-id="text-editor">
+        <state relative-caret-position="3075">
+          <caret line="205" column="40" lean-forward="true" selection-start-line="205" selection-start-column="8" selection-end-line="205" selection-end-column="40" />
+          <folding>
+            <element signature="e#0#15#0" expanded="true" />
+          </folding>
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/HCGS.py">
+      <provider selected="true" editor-type-id="text-editor">
+        <state relative-caret-position="15">
+          <caret line="5" column="42" selection-start-line="5" selection-end-line="5" selection-end-column="42" />
         </state>
       </provider>
     </entry>
     <entry file="file://$PROJECT_DIR$/cfg/TIMIT_CGS/TIMIT_CNN_LSTM_fmllr.cfg">
       <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="105">
-          <caret line="7" column="27" selection-start-line="7" selection-start-column="27" selection-end-line="7" selection-end-column="27" />
+        <state relative-caret-position="360">
+          <caret line="147" column="14" selection-start-line="147" selection-start-column="14" selection-end-line="147" selection-end-column="14" />
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/../anaconda2/lib/python2.7/site-packages/torch/nn/modules/module.py">
+      <provider selected="true" editor-type-id="text-editor">
+        <state relative-caret-position="166">
+          <caret line="534" selection-start-line="534" selection-end-line="534" />
+          <folding>
+            <element signature="e#0#35#0" expanded="true" />
+          </folding>
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/test.py">
+      <provider selected="true" editor-type-id="text-editor">
+        <state relative-caret-position="3570">
+          <caret line="238" column="50" selection-start-line="238" selection-start-column="50" selection-end-line="238" selection-end-column="50" />
+          <folding>
+            <element signature="e#0#12#0" expanded="true" />
+          </folding>
         </state>
       </provider>
     </entry>
     <entry file="file://$PROJECT_DIR$/neural_networks.py">
       <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="-839">
-          <caret line="1297" column="72" selection-start-line="1297" selection-start-column="72" selection-end-line="1297" selection-end-column="72" />
+        <state relative-caret-position="26280">
+          <caret line="1752" column="68" selection-start-line="1752" selection-start-column="68" selection-end-line="1752" selection-end-column="68" />
           <folding>
             <element signature="e#263#275#0" expanded="true" />
+          </folding>
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/quantized_modules.py">
+      <provider selected="true" editor-type-id="text-editor">
+        <state relative-caret-position="-1632">
+          <caret line="19" column="12" selection-start-line="19" selection-start-column="12" selection-end-line="19" selection-end-column="12" />
+          <folding>
+            <element signature="e#0#12#0" expanded="true" />
+          </folding>
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/run_exp.py">
+      <provider selected="true" editor-type-id="text-editor">
+        <state relative-caret-position="178">
+          <caret line="299" column="27" selection-start-line="299" selection-start-column="22" selection-end-line="299" selection-end-column="27" />
+          <folding>
+            <element signature="e#263#300#0" expanded="true" />
+          </folding>
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/core.py">
+      <provider selected="true" editor-type-id="text-editor">
+        <state relative-caret-position="178">
+          <caret line="100" column="49" selection-start-line="100" selection-start-column="44" selection-end-line="100" selection-end-column="49" />
+          <folding>
+            <element signature="e#262#272#0" expanded="true" />
+          </folding>
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/proto/model.proto">
+      <provider selected="true" editor-type-id="text-editor">
+        <state relative-caret-position="90">
+          <caret line="6" column="20" selection-start-line="5" selection-end-line="6" selection-end-column="20" />
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/cfg/TIMIT_CGS/TIMIT_LSTM_fmllr.cfg">
+      <provider selected="true" editor-type-id="text-editor">
+        <state relative-caret-position="105">
+          <caret line="7" column="43" selection-start-line="7" selection-start-column="43" selection-end-line="7" selection-end-column="43" />
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/utils.py">
+      <provider selected="true" editor-type-id="text-editor">
+        <state relative-caret-position="347">
+          <caret line="73" lean-forward="true" selection-start-line="73" selection-end-line="73" />
+          <folding>
+            <element signature="e#262#281#0" expanded="true" />
+            <element signature="e#755#785#0" />
           </folding>
         </state>
       </provider>

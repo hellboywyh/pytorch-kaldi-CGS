@@ -12,6 +12,13 @@ import save_cgs_mat
 import numpy as np
 
 
+def prune (w,thresh):
+    for i in range(w.size(0)):
+        for j in range(w.size(1)):
+            if w[i,j].abs() < thresh:
+                w[i,j] = 0.0
+    return w
+
 def Binarize(tensor,quant_mode='det'):
     if quant_mode=='det':
         return tensor.sign()
