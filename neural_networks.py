@@ -77,6 +77,8 @@ class MLP(nn.Module):
         self.param_quant = list(map(int, options['param_quant'].split(',')))
         self.mlp_quant_inp = strtobool(options['mlp_quant_inp'])
         self.inp_quant = list(map(int, options['inp_quant'].split(',')))
+        self.prune = strtobool(options['mlp_prune'])
+        self.prune_perc = list(map(float, options['mlp_prune_perc'].split(',')))
 
         self.arch_name = options['arch_name']
 
@@ -97,6 +99,10 @@ class MLP(nn.Module):
         # List of CGS
         if self.mlp_hcgs:
             self.hcgs = nn.ModuleList([])
+
+        # List of prune mask
+        if self.prune:
+            self.mask_wx = []
 
         self.wx = nn.ModuleList([])
         self.bn = nn.ModuleList([])
@@ -125,6 +131,10 @@ class MLP(nn.Module):
 
             # activation
             self.act.append(act_fun(self.dnn_act[i]))
+
+            # Masks
+            if self.prune:
+                self.mask_wx.append(torch.randn(current_input, self.dnn_lay[i]))
 
             add_bias = True
 
@@ -171,7 +181,14 @@ class MLP(nn.Module):
         if bool(self.dnn_use_batchnorm_inp):
             x = self.bn0((x))
 
+        if self.prune:
+            self.mask_wx = prune(self.wx, self.prune_perc[0])
+
         for i in range(self.N_dnn_lay):
+
+            # Applying prune mask
+            if self.prune:
+                self.wx[i].weight.data.mul_(self.mask_wx[i].data)
 
             # Applying CGS mask
             if self.mlp_hcgs:
@@ -340,7 +357,8 @@ class LSTM(nn.Module):
         self.param_quant = list(map(int, options['param_quant'].split(',')))
         self.lstm_quant_inp = strtobool(options['lstm_quant_inp'])
         self.inp_quant = list(map(int, options['inp_quant'].split(',')))
-
+        self.prune = strtobool(options['lstm_prune'])
+        self.prune_perc = list(map(float, options['lstm_prune_perc'].split(',')))
         if self.to_do == 'train':
             self.test_flag = False
         else:
@@ -355,12 +373,25 @@ class LSTM(nn.Module):
             self.final_quant = False
             self.final_cgs = False
 
-        self.prune = True
 
         # List of CGS
         if self.lstm_hcgs:
             self.hcgsx = nn.ModuleList([])
             self.hcgsh = nn.ModuleList([])
+
+        # List of prune mask
+        if self.prune:
+            self.mask_wfx = []  # Forget
+            self.mask_ufh = []  # Forget
+
+            self.mask_wix = []  # Input
+            self.mask_uih = []  # Input
+
+            self.mask_wox = []  # Output
+            self.mask_uoh = []  # Output
+
+            self.mask_wcx = []  # Cell state
+            self.mask_uch = []  # Cell state
 
         # List initialization
         self.wfx = nn.ModuleList([])  # Forget
@@ -401,6 +432,20 @@ class LSTM(nn.Module):
 
             # Activations
             self.act.append(act_fun(self.lstm_act[i]))
+
+            # Masks
+            if self.prune:
+                self.mask_wfx.append(torch.randn(current_input, self.lstm_lay[i]))
+                self.mask_ufh.append(torch.randn(current_input, self.lstm_lay[i]))
+
+                self.mask_wix.append(torch.randn(current_input, self.lstm_lay[i]))
+                self.mask_uih.append(torch.randn(current_input, self.lstm_lay[i]))
+
+                self.mask_wox.append(torch.randn(current_input, self.lstm_lay[i]))
+                self.mask_uoh.append(torch.randn(current_input, self.lstm_lay[i]))
+
+                self.mask_wcx.append(torch.randn(current_input, self.lstm_lay[i]))
+                self.mask_uch.append(torch.randn(current_input, self.lstm_lay[i]))
 
             add_bias = True
 
@@ -520,6 +565,16 @@ class LSTM(nn.Module):
             x_bn = self.bn0(x.view(x.shape[0] * x.shape[1], x.shape[2]))
             x = x_bn.view(x.shape[0], x.shape[1], x.shape[2])
 
+        if self.prune:
+            self.mask_wfx = prune(self.wfx, self.prune_perc[0])
+            self.mask_wix = prune(self.wix, self.prune_perc[0])
+            self.mask_wox = prune(self.wox, self.prune_perc[0])
+            self.mask_wcx = prune(self.wcx, self.prune_perc[0])
+            self.mask_ufh = prune(self.ufh, self.prune_perc[0])
+            self.mask_uih = prune(self.uih, self.prune_perc[0])
+            self.mask_uoh = prune(self.uoh, self.prune_perc[0])
+            self.mask_uch = prune(self.uch, self.prune_perc[0])
+
         for i in range(self.N_lstm_lay):
 
             # Initial state and concatenation
@@ -539,11 +594,12 @@ class LSTM(nn.Module):
                 h_init = h_init.cuda()
                 drop_mask = drop_mask.cuda()
 
-            # if self.to_do == 'forward'and self.prune == True:
-            #     self.wfx[i].weight.data = prune(self.wfx[i].weight.data, 0.001)
-            #     self.wix[i].weight.data = prune(self.wix[i].weight.data, 0.001)
-            #     self.wox[i].weight.data = prune(self.wox[i].weight.data, 0.001)
-            #     self.wcx[i].weight.data = prune(self.wcx[i].weight.data, 0.001)
+            # Applying prune mask
+            if self.prune:
+                self.wfx[i].weight.data.mul_(self.mask_wfx[i].data)
+                self.wix[i].weight.data.mul_(self.mask_wix[i].data)
+                self.wox[i].weight.data.mul_(self.mask_wox[i].data)
+                self.wcx[i].weight.data.mul_(self.mask_wcx[i].data)
 
             # Applying CGS mask
             if self.lstm_hcgs:
@@ -590,12 +646,12 @@ class LSTM(nn.Module):
                 wcx_out_bn = self.bn_wcx[i](wcx_out.view(wcx_out.shape[0] * wcx_out.shape[1], wcx_out.shape[2]))
                 wcx_out = wcx_out_bn.view(wcx_out.shape[0], wcx_out.shape[1], wcx_out.shape[2])
 
-            # if self.to_do == 'forward' and self.prune == True:
-            #     self.ufh[i].weight.data = prune(self.ufh[i].weight.data, 0.001)
-            #     self.uih[i].weight.data = prune(self.uih[i].weight.data, 0.001)
-            #     self.uoh[i].weight.data = prune(self.uoh[i].weight.data, 0.001)
-            #     self.uch[i].weight.data = prune(self.uch[i].weight.data, 0.001)
-            #     self.prune = False
+            # Applying prune mask
+            if self.prune:
+                self.ufh[i].weight.data.mul_(self.mask_ufh[i].data)
+                self.uih[i].weight.data.mul_(self.mask_uih[i].data)
+                self.uoh[i].weight.data.mul_(self.mask_uoh[i].data)
+                self.uch[i].weight.data.mul_(self.mask_uch[i].data)
 
             # Applying CGS mask
             if self.lstm_hcgs:
