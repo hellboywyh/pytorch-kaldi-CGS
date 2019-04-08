@@ -4,7 +4,7 @@ PyTorch-Kaldi is an open-source repository for developing state-of-the-art DNN/H
 
 This repository contains the PyTorch-Kaldi toolkit (PyTorch-Kaldi-v1.0). To take a look into the previous version (PyTorch-Kaldi-v0.1), [click here](https://bitbucket.org/mravanelli/pytorch-kaldi-v0.0/src/master/).
 
-The toolkit is released under a **Creative Commons Attribution 4.0 International license**. You can copy, distribute, modify the code for research, commercial and non-commercial purposes. We only ask to cite our paper referenced above.
+The toolkit is released under a **Creative Commons Attribution 4.0 International license**. You can copy, distribute, modify the code for research, commercial and non-commercial purposes. Cite the PyTorch-Kaldi paper if you publish results based on this code.
 
 To improve transparency and replicability of speech recognition results, we give users the possibility to release their PyTorch-Kaldi model within this repository. Feel free to contact us (or doing a pull request) for that. Moreover, if your paper uses PyTorch-Kaldi, it is also possible to advertise it in this repository.
 
