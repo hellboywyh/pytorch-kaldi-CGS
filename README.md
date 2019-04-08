@@ -4,7 +4,7 @@ PyTorch-Kaldi-CGS is an open-source repository for developing state-of-the-art D
 
 This repository contains the PyTorch-Kaldi toolkit (PyTorch-Kaldi-v1.0). To take a look into the previous version (PyTorch-Kaldi-v0.1), [click here](https://bitbucket.org/mravanelli/pytorch-kaldi-v0.0/src/master/).
 
-The toolkit is released under a **Creative Commons Attribution 4.0 International license**. You can copy, distribute, modify the code for research, commercial and non-commercial purposes. Cite the PyTorch-Kaldi paper if you publish results based on this code.
+Cite the PyTorch-Kaldi paper if you publish results based on this code.
 
 [See a short introductory video on the PyTorch-Kaldi Toolkit](https://www.youtube.com/watch?v=VDQaf0SS4K0&t=2s)
 
