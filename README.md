@@ -17,6 +17,7 @@ Cite the PyTorch-Kaldi paper if you publish results based on this code.
 * [Tutorials:](#timit-tutorial)
   * [TIMIT tutorial](#timit-tutorial)
   * [Librispeech tutorial](#librispeech-tutorial)
+  * [CGS tutorial](#cgs-tutorial)
 * [Toolkit Overview:](#overview-of-the-toolkit-architecture)
   * [Toolkit architecture](#overview-of-the-toolkit-architecture)
   * [Configuration files](#description-of-the-configuration-files)
@@ -284,6 +285,8 @@ The final results obtaineed using rescoring (*fglarge*) are reported in the foll
 You can take a look into the results obtained [here](https://bitbucket.org/mravanelli/pytorch-kaldi-exp-librispeech/src/master/).
 
 
+## CGS tutorial
+Here is the description of implementing CGS
 
 
 ## Overview of the toolkit architecture
