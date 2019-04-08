@@ -6,8 +6,6 @@ This repository contains the PyTorch-Kaldi toolkit (PyTorch-Kaldi-v1.0). To take
 
 The toolkit is released under a **Creative Commons Attribution 4.0 International license**. You can copy, distribute, modify the code for research, commercial and non-commercial purposes. Cite the PyTorch-Kaldi paper if you publish results based on this code.
 
-To improve transparency and replicability of speech recognition results, we give users the possibility to release their PyTorch-Kaldi model within this repository. Feel free to contact us (or doing a pull request) for that. Moreover, if your paper uses PyTorch-Kaldi, it is also possible to advertise it in this repository.
-
 [See a short introductory video on the PyTorch-Kaldi Toolkit](https://www.youtube.com/watch?v=VDQaf0SS4K0&t=2s)
 
 
