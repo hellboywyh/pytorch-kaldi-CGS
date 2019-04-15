@@ -253,7 +253,15 @@ def run_nn(data_name, data_set, data_end_index, fea_dict, lab_dict, arch_dict, c
 
     # save the model
     if to_do == 'train':
+        for net in nns.keys():
+            checkpoint = {}
+            checkpoint['model_par'] = nns[net].state_dict()
+            checkpoint['optimizer_par'] = optimizers[net].state_dict()
 
+            out_file = info_file.replace('.info', '_' + arch_dict[net][0] + '.pkl')
+            torch.save(checkpoint, out_file)
+
+    if to_do == 'valid':
         for net in nns.keys():
             checkpoint = {}
             checkpoint['model_par'] = nns[net].state_dict()

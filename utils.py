@@ -21,14 +21,14 @@ import torch.optim as optim
 import math
 
 
-def l1_norm(model):
+def l1_norm(model, l1_lambda):
     l1_reg = torch.tensor(0, dtype=torch.float32).cuda()
     for key in model:
         for param in model[key].parameters():
             dim = param.size()
             if dim.__len__() > 1:
                 l1_reg += torch.norm(param, 1)
-    return l1_reg * 0.00008
+    return l1_reg * float(l1_lambda)
 
 # def gl_norm(model, num_blk):
 #     gl_reg = torch.tensor(0., dtype=torch.float32).cuda()
@@ -52,7 +52,7 @@ def l1_norm(model):
 #         i += 1
 #     return gl_reg * 0.005
 
-def gl_norm(model, num_blk):
+def gl_norm(model, gl_lambda, num_blk):
     gl_reg = torch.tensor(0., dtype=torch.float32).cuda()
     for key in model:
         i = 0
@@ -60,17 +60,17 @@ def gl_norm(model, num_blk):
         for param in model[key].parameters():
             dim = param.size()
             if dim.__len__() > 1:
-                div1 = list(torch.chunk(param,num_blk,1))
+                div1 = list(torch.chunk(param,int(num_blk),1))
                 all_blks = []
                 for div2 in div1:
-                    temp = list(torch.chunk(div2,num_blk,0))
+                    temp = list(torch.chunk(div2,int(num_blk),0))
                     for blk in temp:
                         all_blks.append(blk)
                 for l2_param in all_blks:
                     gl_reg += torch.norm(l2_param, 2)
                 j += 1
             i += 1
-    return gl_reg * 0.01
+    return gl_reg * float(gl_lambda)
 
 
 def run_command(cmd):
@@ -1846,6 +1846,10 @@ def forward_model(fea_dict, lab_dict, arch_dict, model, nns, costs, inp, inp_out
     for line in model:
         [out_name, operation, inp1, inp2] = list(re.findall(pattern, line)[0])
 
+        if out_name == 'loss_gl':
+            pattern2 = '(.*)=(.*)\((.*),(.*),(.*)\)'
+            [out_name, operation, inp1, inp2, inp3] = list(re.findall(pattern2, line)[0])
+
         if operation == 'compute':
 
             if len(inp_out_dict[inp2]) > 1:  # if it is an input feature
@@ -1897,11 +1901,11 @@ def forward_model(fea_dict, lab_dict, arch_dict, model, nns, costs, inp, inp_out
 
         if operation == 'cost_l1':
             if to_do != 'forward':
-                outs_dict[out_name] = l1_norm(nns)
+                outs_dict[out_name] = l1_norm(nns, inp2)
 
         if operation == 'cost_gl':
             if to_do != 'forward':
-                outs_dict[out_name] = gl_norm(nns, 32)
+                outs_dict[out_name] = gl_norm(nns, inp2, inp3)
 
         if operation == 'cost_err':
 
