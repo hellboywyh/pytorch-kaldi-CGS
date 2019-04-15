@@ -30,6 +30,15 @@ def l1_norm(model, l1_lambda):
                 l1_reg += torch.norm(param, 1)
     return l1_reg * float(l1_lambda)
 
+def l2_norm(model, l2_lambda):
+    l1_reg = torch.tensor(0, dtype=torch.float32).cuda()
+    for key in model:
+        for param in model[key].parameters():
+            dim = param.size()
+            if dim.__len__() > 1:
+                l1_reg += torch.norm(param, 2)
+    return l1_reg * float(l2_lambda)
+
 # def gl_norm(model, num_blk):
 #     gl_reg = torch.tensor(0., dtype=torch.float32).cuda()
 #     all_params = []
@@ -1769,6 +1778,9 @@ def model_init(inp_out_dict, model, config, arch_dict, use_cuda, multi_gpu, to_d
         if operation == 'cost_l1':
             inp_out_dict[out_name] = [1]
 
+        if operation == 'cost_l2':
+            inp_out_dict[out_name] = [1]
+
         if operation == 'cost_gl':
             inp_out_dict[out_name] = [1]
 
@@ -1902,6 +1914,10 @@ def forward_model(fea_dict, lab_dict, arch_dict, model, nns, costs, inp, inp_out
         if operation == 'cost_l1':
             if to_do != 'forward':
                 outs_dict[out_name] = l1_norm(nns, inp2)
+
+        if operation == 'cost_l2':
+            if to_do != 'forward':
+                outs_dict[out_name] = l2_norm(nns, inp2)
 
         if operation == 'cost_gl':
             if to_do != 'forward':

@@ -2,8 +2,7 @@
 <project version="4">
   <component name="ChangeListManager">
     <list default="true" id="94de51ad-8d1d-41a3-818d-0ec9c10ebe6b" name="Default Changelist" comment="">
-      <change beforePath="$PROJECT_DIR$/core.py" beforeDir="false" afterPath="$PROJECT_DIR$/core.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/neural_networks.py" beforeDir="false" afterPath="$PROJECT_DIR$/neural_networks.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/proto/model.proto" beforeDir="false" afterPath="$PROJECT_DIR$/proto/model.proto" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/utils.py" beforeDir="false" afterPath="$PROJECT_DIR$/utils.py" afterDir="false" />
     </list>
     <option name="EXCLUDED_CONVERTED_TO_IGNORED" value="true" />
@@ -14,11 +13,11 @@
   </component>
   <component name="FileEditorManager">
     <leaf SIDE_TABS_SIZE_LIMIT_KEY="300">
-      <file pinned="false" current-in-tab="false">
+      <file pinned="false" current-in-tab="true">
         <entry file="file://$PROJECT_DIR$/utils.py">
           <provider selected="true" editor-type-id="text-editor">
-            <state relative-caret-position="400">
-              <caret line="72" column="25" selection-start-line="72" selection-start-column="25" selection-end-line="72" selection-end-column="25" />
+            <state relative-caret-position="201">
+              <caret line="1780" column="32" selection-start-line="1780" selection-start-column="32" selection-end-line="1780" selection-end-column="32" />
               <folding>
                 <element signature="e#262#281#0" expanded="true" />
                 <element signature="e#755#785#0" />
@@ -30,8 +29,8 @@
       <file pinned="false" current-in-tab="false">
         <entry file="file://$PROJECT_DIR$/cfg/TIMIT_CGS/TIMIT_LSTM_fmllr.cfg">
           <provider selected="true" editor-type-id="text-editor">
-            <state relative-caret-position="993">
-              <caret line="202" column="19" selection-start-line="202" selection-start-column="19" selection-end-line="202" selection-end-column="19" />
+            <state relative-caret-position="330">
+              <caret line="247" column="37" selection-start-line="247" selection-start-column="37" selection-end-line="247" selection-end-column="37" />
             </state>
           </provider>
         </entry>
@@ -51,8 +50,8 @@
       <file pinned="false" current-in-tab="false">
         <entry file="file://$PROJECT_DIR$/core.py">
           <provider selected="true" editor-type-id="text-editor">
-            <state relative-caret-position="165">
-              <caret line="260" column="83" selection-start-line="260" selection-start-column="83" selection-end-line="260" selection-end-column="83" />
+            <state relative-caret-position="156">
+              <caret line="208" column="89" selection-start-line="208" selection-start-column="89" selection-end-line="208" selection-end-column="89" />
               <folding>
                 <element signature="e#262#272#0" expanded="true" />
               </folding>
@@ -60,11 +59,20 @@
           </provider>
         </entry>
       </file>
-      <file pinned="false" current-in-tab="true">
+      <file pinned="false" current-in-tab="false">
+        <entry file="file://$PROJECT_DIR$/../anaconda2/lib/python2.7/random.py">
+          <provider selected="true" editor-type-id="text-editor">
+            <state relative-caret-position="166">
+              <caret line="243" selection-start-line="243" selection-end-line="243" />
+            </state>
+          </provider>
+        </entry>
+      </file>
+      <file pinned="false" current-in-tab="false">
         <entry file="file://$PROJECT_DIR$/run_exp.py">
           <provider selected="true" editor-type-id="text-editor">
-            <state relative-caret-position="405">
-              <caret line="168" selection-start-line="168" selection-end-line="168" />
+            <state relative-caret-position="1920">
+              <caret line="128" selection-start-line="128" selection-end-line="128" />
               <folding>
                 <element signature="e#263#300#0" expanded="true" />
               </folding>
@@ -95,8 +103,6 @@
   </component>
   <component name="FindInProjectRecents">
     <findStrings>
-      <find>getresults.sh</find>
-      <find>getresults</find>
       <find>class CNN</find>
       <find>CNN</find>
       <find>optimizers</find>
@@ -107,7 +113,6 @@
       <find>cost_nll</find>
       <find>self.to_do</find>
       <find>l1</find>
-      <find>l1_norm</find>
       <find>act_fun</find>
       <find>gl_norm</find>
       <find>model</find>
@@ -117,18 +122,21 @@
       <find>class LSTM</find>
       <find>_perc</find>
       <find>, self.prune_perc</find>
-      <find>cost_l1</find>
       <find>class lstm</find>
       <find>to_do</find>
       <find>and self.to_do == 'forward'</find>
       <find>self.prune and self.to_do == 'forward'</find>
       <find>forward</find>
       <find>pkl</find>
+      <find>inp3</find>
       <find>valid</find>
+      <find>num_blk</find>
+      <find>l1_norm</find>
+      <find>cost_l1</find>
     </findStrings>
     <replaceStrings>
-      <replace>self.prune and self.to_do == 'valid'</replace>
       <replace>, self.prune_perc[0]</replace>
+      <replace>self.prune and self.to_do == 'valid'</replace>
     </replaceStrings>
   </component>
   <component name="Git.Settings">
@@ -145,16 +153,16 @@
         <option value="$PROJECT_DIR$/cfg/TIMIT_CGS/TIMIT_CNN_LSTM_fmllr.cfg" />
         <option value="$PROJECT_DIR$/L1_norm.py" />
         <option value="$PROJECT_DIR$/test.py" />
-        <option value="$PROJECT_DIR$/proto/model.proto" />
-        <option value="$PROJECT_DIR$/cfg/TIMIT_CGS/TIMIT_LSTM_fmllr.cfg" />
         <option value="$PROJECT_DIR$/quantized_modules.py" />
-        <option value="$PROJECT_DIR$/utils.py" />
         <option value="$PROJECT_DIR$/neural_networks.py" />
         <option value="$PROJECT_DIR$/core.py" />
+        <option value="$PROJECT_DIR$/cfg/TIMIT_CGS/TIMIT_LSTM_fmllr.cfg" />
+        <option value="$PROJECT_DIR$/proto/model.proto" />
+        <option value="$PROJECT_DIR$/utils.py" />
       </list>
     </option>
   </component>
-  <component name="ProjectFrameBounds" extendedState="7">
+  <component name="ProjectFrameBounds" extendedState="6">
     <option name="y" value="28" />
     <option name="width" value="1920" />
     <option name="height" value="1017" />
@@ -173,6 +181,11 @@
             <path>
               <item name="pytorch-kaldi-CGS" type="b2602c69:ProjectViewProjectNode" />
               <item name="pytorch-kaldi-CGS" type="462c0819:PsiDirectoryNode" />
+            </path>
+            <path>
+              <item name="pytorch-kaldi-CGS" type="b2602c69:ProjectViewProjectNode" />
+              <item name="pytorch-kaldi-CGS" type="462c0819:PsiDirectoryNode" />
+              <item name="proto" type="462c0819:PsiDirectoryNode" />
             </path>
           </expand>
           <select />
@@ -248,7 +261,8 @@
     </todo-panel>
   </component>
   <component name="ToolWindowManager">
-    <frame x="-1" y="24" width="1922" height="1033" extended-state="7" />
+    <frame x="-1" y="24" width="1922" height="1033" extended-state="6" />
+    <editor active="true" />
     <layout>
       <window_info content_ui="combo" id="Project" order="0" visible="true" weight="0.18028466" />
       <window_info id="Structure" order="1" side_tool="true" weight="0.25" />
@@ -274,8 +288,23 @@
       <breakpoints>
         <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
           <url>file://$PROJECT_DIR$/run_exp.py</url>
-          <line>161</line>
-          <option name="timeStamp" value="39" />
+          <line>128</line>
+          <option name="timeStamp" value="40" />
+        </line-breakpoint>
+        <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
+          <url>file://$PROJECT_DIR$/utils.py</url>
+          <line>1922</line>
+          <option name="timeStamp" value="43" />
+        </line-breakpoint>
+        <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
+          <url>file://$PROJECT_DIR$/utils.py</url>
+          <line>1862</line>
+          <option name="timeStamp" value="46" />
+        </line-breakpoint>
+        <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
+          <url>file://$PROJECT_DIR$/utils.py</url>
+          <line>81</line>
+          <option name="timeStamp" value="47" />
         </line-breakpoint>
       </breakpoints>
     </breakpoint-manager>
@@ -374,24 +403,6 @@
         </state>
       </provider>
     </entry>
-    <entry file="file://$PROJECT_DIR$/proto/model.proto">
-      <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="105">
-          <caret line="7" column="17" lean-forward="true" selection-start-line="7" selection-start-column="17" selection-end-line="7" selection-end-column="17" />
-        </state>
-      </provider>
-    </entry>
-    <entry file="file://$PROJECT_DIR$/utils.py">
-      <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="400">
-          <caret line="72" column="25" selection-start-line="72" selection-start-column="25" selection-end-line="72" selection-end-column="25" />
-          <folding>
-            <element signature="e#262#281#0" expanded="true" />
-            <element signature="e#755#785#0" />
-          </folding>
-        </state>
-      </provider>
-    </entry>
     <entry file="file://$PROJECT_DIR$/test.py">
       <provider selected="true" editor-type-id="text-editor">
         <state relative-caret-position="256">
@@ -412,23 +423,6 @@
         </state>
       </provider>
     </entry>
-    <entry file="file://$PROJECT_DIR$/cfg/TIMIT_CGS/TIMIT_LSTM_fmllr.cfg">
-      <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="993">
-          <caret line="202" column="19" selection-start-line="202" selection-start-column="19" selection-end-line="202" selection-end-column="19" />
-        </state>
-      </provider>
-    </entry>
-    <entry file="file://$PROJECT_DIR$/core.py">
-      <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="165">
-          <caret line="260" column="83" selection-start-line="260" selection-start-column="83" selection-end-line="260" selection-end-column="83" />
-          <folding>
-            <element signature="e#262#272#0" expanded="true" />
-          </folding>
-        </state>
-      </provider>
-    </entry>
     <entry file="file://$PROJECT_DIR$/neural_networks.py">
       <provider selected="true" editor-type-id="text-editor">
         <state relative-caret-position="228">
@@ -439,12 +433,61 @@
         </state>
       </provider>
     </entry>
+    <entry file="file://$PROJECT_DIR$/../anaconda2/lib/python2.7/random.py">
+      <provider selected="true" editor-type-id="text-editor">
+        <state relative-caret-position="166">
+          <caret line="243" selection-start-line="243" selection-end-line="243" />
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/../anaconda2/lib/python2.7/re.py">
+      <provider selected="true" editor-type-id="text-editor">
+        <state relative-caret-position="174">
+          <caret line="180" selection-start-line="180" selection-end-line="180" />
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/proto/model.proto">
+      <provider selected="true" editor-type-id="text-editor">
+        <state relative-caret-position="75">
+          <caret line="5" column="21" lean-forward="true" selection-start-line="5" selection-start-column="21" selection-end-line="5" selection-end-column="21" />
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/cfg/TIMIT_CGS/TIMIT_LSTM_fmllr.cfg">
+      <provider selected="true" editor-type-id="text-editor">
+        <state relative-caret-position="330">
+          <caret line="247" column="37" selection-start-line="247" selection-start-column="37" selection-end-line="247" selection-end-column="37" />
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/core.py">
+      <provider selected="true" editor-type-id="text-editor">
+        <state relative-caret-position="156">
+          <caret line="208" column="89" selection-start-line="208" selection-start-column="89" selection-end-line="208" selection-end-column="89" />
+          <folding>
+            <element signature="e#262#272#0" expanded="true" />
+          </folding>
+        </state>
+      </provider>
+    </entry>
     <entry file="file://$PROJECT_DIR$/run_exp.py">
       <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="405">
-          <caret line="168" selection-start-line="168" selection-end-line="168" />
+        <state relative-caret-position="1920">
+          <caret line="128" selection-start-line="128" selection-end-line="128" />
           <folding>
             <element signature="e#263#300#0" expanded="true" />
+          </folding>
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/utils.py">
+      <provider selected="true" editor-type-id="text-editor">
+        <state relative-caret-position="201">
+          <caret line="1780" column="32" selection-start-line="1780" selection-start-column="32" selection-end-line="1780" selection-end-column="32" />
+          <folding>
+            <element signature="e#262#281#0" expanded="true" />
+            <element signature="e#755#785#0" />
           </folding>
         </state>
       </provider>
