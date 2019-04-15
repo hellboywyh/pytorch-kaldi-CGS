@@ -1,25 +1,10 @@
-# The PyTorch-Kaldi Speech Recognition Toolkit
-<img src="pytorch-kaldi_logo.png" width="220" img align="left">
-PyTorch-Kaldi is an open-source repository for developing state-of-the-art DNN/HMM speech recognition systems. The DNN part is managed by PyTorch, while feature extraction, label computation, and decoding are performed with the Kaldi toolkit.
+# The PyTorch-Kaldi-CGS Speech Recognition Toolkit
 
-This repository contains the last version of the  PyTorch-Kaldi toolkit (PyTorch-Kaldi-v1.0). To take a look into the previous version (PyTorch-Kaldi-v0.1), [click here](https://bitbucket.org/mravanelli/pytorch-kaldi-v0.0/src/master/).
+PyTorch-Kaldi-CGS is an open-source repository for developing state-of-the-art DNN/HMM speech recognition systems with HCGS implemented during training. This repository is forked from PyTorch-Kaldi (https://github.com/mravanelli/pytorch-kaldi). The DNN part is managed by PyTorch, while feature extraction, label computation, and decoding are performed with the Kaldi toolkit.
 
-If you use this code or part of it, please cite the following paper:
+This repository contains the PyTorch-Kaldi toolkit (PyTorch-Kaldi-v1.0). To take a look into the previous version (PyTorch-Kaldi-v0.1), [click here](https://bitbucket.org/mravanelli/pytorch-kaldi-v0.0/src/master/).
 
-*M. Ravanelli, T. Parcollet, Y. Bengio, "The PyTorch-Kaldi Speech Recognition Toolkit", [arXiv](https://arxiv.org/abs/1811.07453)*
-
-```
-@inproceedings{pytorch-kaldi,
-title    = {The PyTorch-Kaldi Speech Recognition Toolkit},
-author    = {M. Ravanelli and T. Parcollet and Y. Bengio},
-booktitle    = {In Proc. of ICASSP},
-year    = {2019}
-}
-```
-
-The toolkit is released under a **Creative Commons Attribution 4.0 International license**. You can copy, distribute, modify the code for research, commercial and non-commercial purposes. We only ask to cite our paper referenced above.
-
-To improve transparency and replicability of speech recognition results, we give users the possibility to release their PyTorch-Kaldi model within this repository. Feel free to contact us (or doing a pull request) for that. Moreover, if your paper uses PyTorch-Kaldi, it is also possible to advertise it in this repository.
+Cite the PyTorch-Kaldi paper if you publish results based on this code.
 
 [See a short introductory video on the PyTorch-Kaldi Toolkit](https://www.youtube.com/watch?v=VDQaf0SS4K0&t=2s)
 
@@ -32,6 +17,7 @@ To improve transparency and replicability of speech recognition results, we give
 * [Tutorials:](#timit-tutorial)
   * [TIMIT tutorial](#timit-tutorial)
   * [Librispeech tutorial](#librispeech-tutorial)
+  * [CGS tutorial](#cgs-tutorial)
 * [Toolkit Overview:](#overview-of-the-toolkit-architecture)
   * [Toolkit architecture](#overview-of-the-toolkit-architecture)
   * [Configuration files](#description-of-the-configuration-files)
@@ -299,6 +285,8 @@ The final results obtaineed using rescoring (*fglarge*) are reported in the foll
 You can take a look into the results obtained [here](https://bitbucket.org/mravanelli/pytorch-kaldi-exp-librispeech/src/master/).
 
 
+## CGS tutorial
+Here is the description of implementing CGS
 
 
 ## Overview of the toolkit architecture
