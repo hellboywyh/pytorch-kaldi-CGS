@@ -176,13 +176,19 @@ for ep in range(N_ep):
                 # getting the next chunk
                 next_config_file = cfg_file_list[op_counter]
 
+                # checking whether to prune or not
+                if (ck + 1) == N_ck_tr:
+                    if_prune = True
+                else:
+                    if_prune = False
+
                 # run chunk processing
                 [data_name, data_set, data_end_index, fea_dict, lab_dict, arch_dict] = run_nn(data_name, data_set,
                                                                                               data_end_index, fea_dict,
                                                                                               lab_dict, arch_dict,
                                                                                               config_chunk_file,
                                                                                               processed_first,
-                                                                                              next_config_file)
+                                                                                              next_config_file, if_prune)
 
                 # update the first_processed variable
                 processed_first = False

@@ -2,6 +2,7 @@ import torch
 import torch.nn.functional as F
 import torch.nn as nn
 import numpy as np
+from quantized_modules import BinarizeLinear, QuantizeLinear, Quantize, QuantizeVar, prune
 
 def act_fun(act_type):
     if act_type == "relu":
@@ -379,3 +380,26 @@ class LSTM(nn.Module):
             x = h
 
         return x
+
+    def prune(self):
+
+        self.mask_wfx = prune(self.wfx, 30.0)
+        self.mask_wix = prune(self.wix, 30.0)
+        self.mask_wox = prune(self.wox, 30.0)
+        self.mask_wcx = prune(self.wcx, 30.0)
+        self.mask_ufh = prune(self.ufh, 30.0)
+        self.mask_uih = prune(self.uih, 30.0)
+        self.mask_uoh = prune(self.uoh, 30.0)
+        self.mask_uch = prune(self.uch, 30.0)
+
+        for i in range(self.N_lstm_lay):
+            self.wfx[i].weight.data.mul_(self.mask_wfx[i].data)
+            self.wix[i].weight.data.mul_(self.mask_wix[i].data)
+            self.wox[i].weight.data.mul_(self.mask_wox[i].data)
+            self.wcx[i].weight.data.mul_(self.mask_wcx[i].data)
+            self.ufh[i].weight.data.mul_(self.mask_ufh[i].data)
+            self.uih[i].weight.data.mul_(self.mask_uih[i].data)
+            self.uoh[i].weight.data.mul_(self.mask_uoh[i].data)
+            self.uch[i].weight.data.mul_(self.mask_uch[i].data)
+
+        return 1

@@ -1272,6 +1272,11 @@ def parse_model_field(cfg_file):
 
             # Analyze line and chech if it is compliant with proto_model
             [out_name, operation, inp1, inp2] = list(re.findall(pattern, line)[0])
+
+            if out_name == 'loss_gl':
+                pattern2 = '(.*)=(.*)\((.*),(.*),(.*)\)'
+                [out_name, operation, inp1, inp2, inp3] = list(re.findall(pattern2, line)[0])
+
             inps = [inp1, inp2]
 
             found = False
@@ -1335,6 +1340,11 @@ def terminal_node_detection(model_arch, node):
 
     for line in model_arch:
         [out_name, operation, inp1, inp2] = list(re.findall(pattern, line)[0])
+
+        if out_name == 'loss_gl':
+            pattern2 = '(.*)=(.*)\((.*),(.*),(.*)\)'
+            [out_name, operation, inp1, inp2, inp3] = list(re.findall(pattern2, line)[0])
+
         if inp1 == node or inp2 == node:
             terminal = False
 
@@ -1424,6 +1434,10 @@ def create_block_diagram(cfg_file):
     # Initializations of the blocks
     for line in model_arch:
         [out_name, operation, inp1, inp2] = list(re.findall(pattern, line)[0])
+
+        if out_name == 'loss_gl':
+            pattern2 = '(.*)=(.*)\((.*),(.*),(.*)\)'
+            [out_name, operation, inp1, inp2, inp3] = list(re.findall(pattern2, line)[0])
 
         if operation != 'compute':
 
@@ -1529,6 +1543,10 @@ def list_fea_lab_arch(config):  # cancel
     for line in model:
         [out_name, operation, inp1, inp2] = list(re.findall(pattern, line)[0])
 
+        if out_name == 'loss_gl':
+            pattern2 = '(.*)=(.*)\((.*),(.*),(.*)\)'
+            [out_name, operation, inp1, inp2, inp3] = list(re.findall(pattern2, line)[0])
+
         if inp1 in fea_lst and inp1 not in fea_lst_used_name:
             pattern_fea = "fea_name=" + inp1 + "\nfea_lst=(.*)\nfea_opts=(.*)\ncw_left=(.*)\ncw_right=(.*)"
             fea_lst_used.append((inp1 + "," + ",".join(list(re.findall(pattern_fea, fea_field)[0]))).split(','))
@@ -1600,6 +1618,10 @@ def dict_fea_lab_arch(config):
 
     for line in model:
         [out_name, operation, inp1, inp2] = list(re.findall(pattern, line)[0])
+
+        if out_name == 'loss_gl':
+            pattern2 = '(.*)=(.*)\((.*),(.*),(.*)\)'
+            [out_name, operation, inp1, inp2, inp3] = list(re.findall(pattern2, line)[0])
 
         if inp1 in fea_lst and inp1 not in fea_lst_used_name:
             pattern_fea = "fea_name=" + inp1 + "\nfea_lst=(.*)\nfea_opts=(.*)\ncw_left=(.*)\ncw_right=(.*)"
@@ -1718,6 +1740,10 @@ def model_init(inp_out_dict, model, config, arch_dict, use_cuda, multi_gpu, to_d
 
     for line in model:
         [out_name, operation, inp1, inp2] = list(re.findall(pattern, line)[0])
+
+        if out_name == 'loss_gl':
+            pattern2 = '(.*)=(.*)\((.*),(.*),(.*)\)'
+            [out_name, operation, inp1, inp2, inp3] = list(re.findall(pattern2, line)[0])
 
         if operation == 'compute':
 

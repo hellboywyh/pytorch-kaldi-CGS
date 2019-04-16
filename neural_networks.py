@@ -181,14 +181,14 @@ class MLP(nn.Module):
         if bool(self.dnn_use_batchnorm_inp):
             x = self.bn0((x))
 
-        if self.prune and self.to_do == 'valid':
-            self.mask_wx = prune(self.wx, self.prune_perc[0])
+        # if self.prune and self.to_do == 'valid':
+        #     self.mask_wx = prune(self.wx, self.prune_perc[0])
 
         for i in range(self.N_dnn_lay):
 
-            # Applying prune mask
-            if self.prune and self.to_do == 'valid':
-                self.wx[i].weight.data.mul_(self.mask_wx[i].data)
+            # # Applying prune mask
+            # if self.prune and self.to_do == 'valid':
+            #     self.wx[i].weight.data.mul_(self.mask_wx[i].data)
 
             # Applying CGS mask
             if self.mlp_hcgs:
@@ -220,6 +220,15 @@ class MLP(nn.Module):
                 x = self.drop[i](self.act[i](self.wx[i](x)))
 
         return x
+
+    def prune_parameters(self):
+
+        self.mask_wx = prune(self.wx, self.prune_perc[0])
+
+        for i in range(self.N_dnn_lay):
+            self.wx[i].weight.data.mul_(self.mask_wx[i].data)
+
+        return 1
 
 
 class LSTM_cudnn(nn.Module):
@@ -565,15 +574,15 @@ class LSTM(nn.Module):
             x_bn = self.bn0(x.view(x.shape[0] * x.shape[1], x.shape[2]))
             x = x_bn.view(x.shape[0], x.shape[1], x.shape[2])
 
-        if self.prune and self.to_do == 'valid':
-            self.mask_wfx = prune(self.wfx, self.prune_perc[0])
-            self.mask_wix = prune(self.wix, self.prune_perc[0])
-            self.mask_wox = prune(self.wox, self.prune_perc[0])
-            self.mask_wcx = prune(self.wcx, self.prune_perc[0])
-            self.mask_ufh = prune(self.ufh, self.prune_perc[0])
-            self.mask_uih = prune(self.uih, self.prune_perc[0])
-            self.mask_uoh = prune(self.uoh, self.prune_perc[0])
-            self.mask_uch = prune(self.uch, self.prune_perc[0])
+        # if self.prune and self.to_do == 'valid':
+        #     self.mask_wfx = prune(self.wfx, self.prune_perc[0])
+        #     self.mask_wix = prune(self.wix, self.prune_perc[0])
+        #     self.mask_wox = prune(self.wox, self.prune_perc[0])
+        #     self.mask_wcx = prune(self.wcx, self.prune_perc[0])
+        #     self.mask_ufh = prune(self.ufh, self.prune_perc[0])
+        #     self.mask_uih = prune(self.uih, self.prune_perc[0])
+        #     self.mask_uoh = prune(self.uoh, self.prune_perc[0])
+        #     self.mask_uch = prune(self.uch, self.prune_perc[0])
 
         for i in range(self.N_lstm_lay):
 
@@ -594,12 +603,12 @@ class LSTM(nn.Module):
                 h_init = h_init.cuda()
                 drop_mask = drop_mask.cuda()
 
-            # Applying prune mask
-            if self.prune and self.to_do == 'valid':
-                self.wfx[i].weight.data.mul_(self.mask_wfx[i].data)
-                self.wix[i].weight.data.mul_(self.mask_wix[i].data)
-                self.wox[i].weight.data.mul_(self.mask_wox[i].data)
-                self.wcx[i].weight.data.mul_(self.mask_wcx[i].data)
+            # # Applying prune mask
+            # if self.prune and self.to_do == 'valid':
+            #     self.wfx[i].weight.data.mul_(self.mask_wfx[i].data)
+            #     self.wix[i].weight.data.mul_(self.mask_wix[i].data)
+            #     self.wox[i].weight.data.mul_(self.mask_wox[i].data)
+            #     self.wcx[i].weight.data.mul_(self.mask_wcx[i].data)
 
             # Applying CGS mask
             if self.lstm_hcgs:
@@ -646,12 +655,12 @@ class LSTM(nn.Module):
                 wcx_out_bn = self.bn_wcx[i](wcx_out.view(wcx_out.shape[0] * wcx_out.shape[1], wcx_out.shape[2]))
                 wcx_out = wcx_out_bn.view(wcx_out.shape[0], wcx_out.shape[1], wcx_out.shape[2])
 
-            # Applying prune mask
-            if self.prune and self.to_do == 'valid':
-                self.ufh[i].weight.data.mul_(self.mask_ufh[i].data)
-                self.uih[i].weight.data.mul_(self.mask_uih[i].data)
-                self.uoh[i].weight.data.mul_(self.mask_uoh[i].data)
-                self.uch[i].weight.data.mul_(self.mask_uch[i].data)
+            # # Applying prune mask
+            # if self.prune and self.to_do == 'valid':
+            #     self.ufh[i].weight.data.mul_(self.mask_ufh[i].data)
+            #     self.uih[i].weight.data.mul_(self.mask_uih[i].data)
+            #     self.uoh[i].weight.data.mul_(self.mask_uoh[i].data)
+            #     self.uch[i].weight.data.mul_(self.mask_uch[i].data)
 
             # Applying CGS mask
             if self.lstm_hcgs:
@@ -714,6 +723,29 @@ class LSTM(nn.Module):
             x = h
 
         return x
+
+    def prune_parameters(self):
+
+        self.mask_wfx = prune(self.wfx, self.prune_perc[0])
+        self.mask_wix = prune(self.wix, self.prune_perc[0])
+        self.mask_wox = prune(self.wox, self.prune_perc[0])
+        self.mask_wcx = prune(self.wcx, self.prune_perc[0])
+        self.mask_ufh = prune(self.ufh, self.prune_perc[0])
+        self.mask_uih = prune(self.uih, self.prune_perc[0])
+        self.mask_uoh = prune(self.uoh, self.prune_perc[0])
+        self.mask_uch = prune(self.uch, self.prune_perc[0])
+
+        for i in range(self.N_lstm_lay):
+            self.wfx[i].weight.data.mul_(self.mask_wfx[i].data)
+            self.wix[i].weight.data.mul_(self.mask_wix[i].data)
+            self.wox[i].weight.data.mul_(self.mask_wox[i].data)
+            self.wcx[i].weight.data.mul_(self.mask_wcx[i].data)
+            self.ufh[i].weight.data.mul_(self.mask_ufh[i].data)
+            self.uih[i].weight.data.mul_(self.mask_uih[i].data)
+            self.uoh[i].weight.data.mul_(self.mask_uoh[i].data)
+            self.uch[i].weight.data.mul_(self.mask_uch[i].data)
+
+        return 1
 
 
 class GRU(nn.Module):

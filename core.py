@@ -22,7 +22,7 @@ from utils import shift
 
 
 def run_nn(data_name, data_set, data_end_index, fea_dict, lab_dict, arch_dict, cfg_file, processed_first,
-           next_config_file):
+           next_config_file, if_prune=False):
     # This function processes the current chunk using the information in cfg_file. In parallel, the next chunk is load into the CPU memory
 
     # Reading chunk-specific cfg file (first argument-mandatory file)
@@ -255,20 +255,28 @@ def run_nn(data_name, data_set, data_end_index, fea_dict, lab_dict, arch_dict, c
     if to_do == 'train':
         for net in nns.keys():
             checkpoint = {}
+
+            # pruning if epoch complete
+            if nns[net].prune and if_prune:
+                print('Pruning parameters of ' + net)
+                prune_ret = nns[net].prune_parameters()
+                if prune_ret == 1:
+                    print('Pruning complete of ' + net)
+
             checkpoint['model_par'] = nns[net].state_dict()
             checkpoint['optimizer_par'] = optimizers[net].state_dict()
 
             out_file = info_file.replace('.info', '_' + arch_dict[net][0] + '.pkl')
             torch.save(checkpoint, out_file)
 
-    if to_do == 'valid':
-        for net in nns.keys():
-            checkpoint = {}
-            checkpoint['model_par'] = nns[net].state_dict()
-            checkpoint['optimizer_par'] = optimizers[net].state_dict()
-
-            out_file = info_file.replace('.info', '_' + arch_dict[net][0] + '.pkl')
-            torch.save(checkpoint, out_file)
+    # if to_do == 'valid':
+    #     for net in nns.keys():
+    #         checkpoint = {}
+    #         checkpoint['model_par'] = nns[net].state_dict()
+    #         checkpoint['optimizer_par'] = optimizers[net].state_dict()
+    #
+    #         out_file = info_file.replace('.info', '_' + arch_dict[net][0] + '.pkl')
+    #         torch.save(checkpoint, out_file)
 
     if to_do == 'forward':
         for out_name in forward_outs:
