@@ -230,6 +230,10 @@ class MLP(nn.Module):
 
         return 1
 
+    def apply_hcgs(self):
+
+
+
 
 class LSTM_cudnn(nn.Module):
 
