@@ -68,7 +68,7 @@ def gl_norm(model, gl_lambda, num_blk):
         j = 0
         for param in model[key].parameters():
             dim = param.size()
-            if dim.__len__() > 1:
+            if dim.__len__() > 1 and not model[key].skip_regularization:
                 div1 = list(torch.chunk(param,int(num_blk),1))
                 all_blks = []
                 for div2 in div1:

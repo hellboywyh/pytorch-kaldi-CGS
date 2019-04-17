@@ -79,6 +79,7 @@ class MLP(nn.Module):
         self.inp_quant = list(map(int, options['inp_quant'].split(',')))
         self.prune = strtobool(options['mlp_prune'])
         self.prune_perc = list(map(float, options['mlp_prune_perc'].split(',')))
+        self.skip_regularization = strtobool(options['skip_regularization'])
 
         self.arch_name = options['arch_name']
 
@@ -372,6 +373,8 @@ class LSTM(nn.Module):
         self.inp_quant = list(map(int, options['inp_quant'].split(',')))
         self.prune = strtobool(options['lstm_prune'])
         self.prune_perc = list(map(float, options['lstm_prune_perc'].split(',')))
+        self.skip_regularization = strtobool(options['skip_regularization'])
+
         if self.to_do == 'train':
             self.test_flag = False
         else:
