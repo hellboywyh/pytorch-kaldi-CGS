@@ -230,7 +230,7 @@ class MLP(nn.Module):
 
         return 1
 
-    def apply_hcgs(self):
+    # def apply_hcgs(self):
 
 
 

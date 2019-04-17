@@ -5,7 +5,7 @@ import torch
 from torch.nn.parameter import Parameter
 import torch.nn as nn
 
-def conn_mat(n_in, n_out, block_size, drop_ratio, block_size2, drop_ratio2, mat_num='1', dir='/home/dkadetot/pytorch-kaldi/saved_mat', equal_blks_for_input = False):
+def conn_mat(n_in, n_out, block_size, drop_ratio, block_size2, drop_ratio2, mat_num='1', dir='/home/dkadetot/pytorch-kaldi/saved_mat', equal_blks_for_input = True):
     sparsity = 1 - float(drop_ratio) / 100
     n_blk_rows = n_in / block_size
     conn_mat = np.full((n_in, n_out), 0, dtype='float32')
