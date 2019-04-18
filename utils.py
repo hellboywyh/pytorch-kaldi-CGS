@@ -39,28 +39,6 @@ def l2_norm(model, l2_lambda):
                 l2_reg += torch.norm(param, 2)
     return l2_reg * float(l2_lambda)
 
-# def gl_norm(model, num_blk):
-#     gl_reg = torch.tensor(0., dtype=torch.float32).cuda()
-#     all_params = []
-#     for param in model.parameters():
-#         all_params.append(param)
-#     i = 0
-#     j = 0
-#     for param in all_params:
-#         dim = param.size()
-#         if dim.__len__() > 1:
-#             div1 = list(torch.chunk(all_params[i],num_blk,1))
-#             all_blks = []
-#             for div2 in div1:
-#                 temp = list(torch.chunk(div2,num_blk,0))
-#                 for blk in temp:
-#                     all_blks.append(blk)
-#             for l2_param in all_blks:
-#                 gl_reg += torch.norm(l2_param, 2)
-#             j += 1
-#         i += 1
-#     return gl_reg * 0.005
-
 def gl_norm(model, gl_lambda, num_blk):
     gl_reg = torch.tensor(0., dtype=torch.float32).cuda()
     for key in model:

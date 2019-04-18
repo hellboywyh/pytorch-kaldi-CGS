@@ -88,7 +88,8 @@ class MLP(nn.Module):
         else:
             self.test_flag = True
 
-        if (self.to_do == 'forward' or self.to_do == 'valid') and self.arch_name != 'MLP_layers2':
+        # if (self.to_do == 'forward' or self.to_do == 'valid') and self.arch_name != 'MLP_layers2':
+        if self.to_do == 'forward' or self.to_do == 'valid':
             self.save_mat = True
             self.final_quant = True
             self.final_cgs = True
@@ -162,7 +163,7 @@ class MLP(nn.Module):
             if self.mlp_hcgs:
                 self.hcgs.append(
                     HCGS(current_input, self.dnn_lay[i], self.hcgs_block[0], self.hcgs_sparse[0], self.hcgs_block[1],
-                         self.hcgs_sparse[1], str(i) + '_mlp_' + self.arch_name))
+                         self.hcgs_sparse[1], str(i) + '_' + self.arch_name))
 
             # weight initialization
             self.wx[i].weight = torch.nn.Parameter(torch.Tensor(self.dnn_lay[i], current_input).uniform_(
@@ -196,15 +197,15 @@ class MLP(nn.Module):
                 self.wx[i].weight.data.mul_(self.hcgs[i].mask.data)
 
             if self.save_mat:
-                save_cgs_mat.save_mat(self.wx[i].weight.data, str(i) + '_w_mlp_' + self.arch_name, self.param_sav)
+                save_cgs_mat.save_mat(self.wx[i].weight.data, str(i) + '_w_' + self.arch_name, self.param_sav)
                 if self.mlp_hcgs:
-                    save_cgs_mat.save_hcgs_mat(self.hcgs[i].mask.data, str(i) + '_mlp_' + self.arch_name, self.param_sav)
+                    save_cgs_mat.save_hcgs_mat(self.hcgs[i].mask.data, str(i) + '_' + self.arch_name, self.param_sav)
                 if i == (self.N_dnn_lay - 1):
                     self.save_mat = False
 
             if self.final_quant and self.mlp_quant:
                 wx_data = Quantize(self.wx[i].weight.data, numBits=self.param_quant[i], if_forward=self.final_quant)
-                save_cgs_mat.save_mat(wx_data, str(i) + '_w_mlp_q_' + self.arch_name, self.param_sav)
+                save_cgs_mat.save_mat(wx_data, str(i) + '_w_q_' + self.arch_name, self.param_sav)
                 if i == (self.N_dnn_lay - 1):
                     self.final_quant = False
 
@@ -632,7 +633,7 @@ class LSTM(nn.Module):
                 save_cgs_mat.save_mat(self.wox[i].weight.data, str(i) + '_wox_' + self.arch_name, self.param_sav)
                 save_cgs_mat.save_mat(self.wcx[i].weight.data, str(i) + '_wcx_' + self.arch_name, self.param_sav)
                 if self.lstm_hcgs:
-                    save_cgs_mat.save_hcgs_mat(self.hcgsx[i].mask.data, str(i) + '_x_', self.param_sav)
+                    save_cgs_mat.save_hcgs_mat(self.hcgsx[i].mask.data, str(i) + '_x_' + self.arch_name, self.param_sav)
 
             if self.final_quant and self.lstm_quant:
                 wfx_data = Quantize(self.wfx[i].weight.data, numBits=self.param_quant[i], if_forward=self.final_quant)
