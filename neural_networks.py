@@ -162,7 +162,7 @@ class MLP(nn.Module):
             if self.mlp_hcgs:
                 self.hcgs.append(
                     HCGS(current_input, self.dnn_lay[i], self.hcgs_block[0], self.hcgs_sparse[0], self.hcgs_block[1],
-                         self.hcgs_sparse[1], str(i) + '_mlp'))
+                         self.hcgs_sparse[1], str(i) + '_mlp' + self.arch_name))
 
             # weight initialization
             self.wx[i].weight = torch.nn.Parameter(torch.Tensor(self.dnn_lay[i], current_input).uniform_(
@@ -196,15 +196,15 @@ class MLP(nn.Module):
                 self.wx[i].weight.data.mul_(self.hcgs[i].mask.data)
 
             if self.save_mat:
-                save_cgs_mat.save_mat(self.wx[i].weight.data, str(i) + '_w_mlp', self.param_sav)
+                save_cgs_mat.save_mat(self.wx[i].weight.data, str(i) + '_w_mlp' + self.arch_name, self.param_sav)
                 if self.mlp_hcgs:
-                    save_cgs_mat.save_hcgs_mat(self.hcgs[i].mask.data, str(i) + '_mlp', self.param_sav)
+                    save_cgs_mat.save_hcgs_mat(self.hcgs[i].mask.data, str(i) + '_mlp' + self.arch_name, self.param_sav)
                 if i == (self.N_dnn_lay - 1):
                     self.save_mat = False
 
             if self.final_quant and self.mlp_quant:
                 wx_data = Quantize(self.wx[i].weight.data, numBits=self.param_quant[i], if_forward=self.final_quant)
-                save_cgs_mat.save_mat(wx_data, str(i) + '_w_mlp_q', self.param_sav)
+                save_cgs_mat.save_mat(wx_data, str(i) + '_w_mlp_q' + self.arch_name, self.param_sav)
                 if i == (self.N_dnn_lay - 1):
                     self.final_quant = False
 
@@ -375,6 +375,8 @@ class LSTM(nn.Module):
         self.prune_perc = list(map(float, options['lstm_prune_perc'].split(',')))
         self.skip_regularization = strtobool(options['skip_regularization'])
 
+        self.arch_name = options['arch_name']
+
         if self.to_do == 'train':
             self.test_flag = False
         else:
@@ -507,7 +509,7 @@ class LSTM(nn.Module):
                     self.hcgsx.append(
                         HCGS(current_input, self.lstm_lay[i], self.hcgsx_block[0], self.hcgsx_sparse[0],
                              self.hcgsx_block[1],
-                             self.hcgsx_sparse[1], str(i) + '_x'))
+                             self.hcgsx_sparse[1], str(i) + '_x' + self.arch_name))
 
                 # Recurrent connections
                 # if self.lstm_quant and not self.final_quant:
@@ -548,7 +550,7 @@ class LSTM(nn.Module):
                 if self.lstm_hcgs:
                     self.hcgsh.append(
                         HCGS(self.lstm_lay[i], self.lstm_lay[i], self.hcgsh_block[0], self.hcgsh_sparse[0],
-                             self.hcgsh_block[1], self.hcgsh_sparse[1], str(i) + '_h'))
+                             self.hcgsh_block[1], self.hcgsh_sparse[1], str(i) + '_h' + self.arch_name))
 
             if self.lstm_orthinit:
                 nn.init.orthogonal_(self.ufh[i].weight)
@@ -625,10 +627,10 @@ class LSTM(nn.Module):
                 self.wcx[i].weight.data.mul_(self.hcgsx[i].mask.data)
 
             if self.save_mat:
-                save_cgs_mat.save_mat(self.wfx[i].weight.data, str(i) + '_wfx', self.param_sav)
-                save_cgs_mat.save_mat(self.wix[i].weight.data, str(i) + '_wix', self.param_sav)
-                save_cgs_mat.save_mat(self.wox[i].weight.data, str(i) + '_wox', self.param_sav)
-                save_cgs_mat.save_mat(self.wcx[i].weight.data, str(i) + '_wcx', self.param_sav)
+                save_cgs_mat.save_mat(self.wfx[i].weight.data, str(i) + '_wfx' + self.arch_name, self.param_sav)
+                save_cgs_mat.save_mat(self.wix[i].weight.data, str(i) + '_wix' + self.arch_name, self.param_sav)
+                save_cgs_mat.save_mat(self.wox[i].weight.data, str(i) + '_wox' + self.arch_name, self.param_sav)
+                save_cgs_mat.save_mat(self.wcx[i].weight.data, str(i) + '_wcx' + self.arch_name, self.param_sav)
                 if self.lstm_hcgs:
                     save_cgs_mat.save_hcgs_mat(self.hcgsx[i].mask.data, str(i) + '_x', self.param_sav)
 
@@ -637,10 +639,10 @@ class LSTM(nn.Module):
                 wix_data = Quantize(self.wix[i].weight.data, numBits=self.param_quant[i], if_forward=self.final_quant)
                 wox_data = Quantize(self.wox[i].weight.data, numBits=self.param_quant[i], if_forward=self.final_quant)
                 wcx_data = Quantize(self.wcx[i].weight.data, numBits=self.param_quant[i], if_forward=self.final_quant)
-                save_cgs_mat.save_mat(wfx_data, str(i) + '_wfx_q', self.param_sav)
-                save_cgs_mat.save_mat(wix_data, str(i) + '_wix_q', self.param_sav)
-                save_cgs_mat.save_mat(wox_data, str(i) + '_wox_q', self.param_sav)
-                save_cgs_mat.save_mat(wcx_data, str(i) + '_wcx_q', self.param_sav)
+                save_cgs_mat.save_mat(wfx_data, str(i) + '_wfx_q' + self.arch_name, self.param_sav)
+                save_cgs_mat.save_mat(wix_data, str(i) + '_wix_q' + self.arch_name, self.param_sav)
+                save_cgs_mat.save_mat(wox_data, str(i) + '_wox_q' + self.arch_name, self.param_sav)
+                save_cgs_mat.save_mat(wcx_data, str(i) + '_wcx_q' + self.arch_name, self.param_sav)
 
             # Feed-forward affine transformations (all steps in parallel)
             wfx_out = self.wfx[i](x)
@@ -677,12 +679,12 @@ class LSTM(nn.Module):
                 self.uch[i].weight.data.mul_(self.hcgsh[i].mask.data)
 
             if self.save_mat:
-                save_cgs_mat.save_mat(self.ufh[i].weight.data, str(i) + '_wfh', self.param_sav)
-                save_cgs_mat.save_mat(self.uih[i].weight.data, str(i) + '_wih', self.param_sav)
-                save_cgs_mat.save_mat(self.uoh[i].weight.data, str(i) + '_woh', self.param_sav)
-                save_cgs_mat.save_mat(self.uch[i].weight.data, str(i) + '_wch', self.param_sav)
+                save_cgs_mat.save_mat(self.ufh[i].weight.data, str(i) + '_wfh' + self.arch_name, self.param_sav)
+                save_cgs_mat.save_mat(self.uih[i].weight.data, str(i) + '_wih' + self.arch_name, self.param_sav)
+                save_cgs_mat.save_mat(self.uoh[i].weight.data, str(i) + '_woh' + self.arch_name, self.param_sav)
+                save_cgs_mat.save_mat(self.uch[i].weight.data, str(i) + '_wch' + self.arch_name, self.param_sav)
                 if self.lstm_hcgs:
-                    save_cgs_mat.save_hcgs_mat(self.hcgsh[i].mask.data, str(i) + '_h', self.param_sav)
+                    save_cgs_mat.save_hcgs_mat(self.hcgsh[i].mask.data, str(i) + '_h' + self.arch_name, self.param_sav)
                 if i == (self.N_lstm_lay - 1):
                     self.save_mat = False
 
@@ -691,10 +693,10 @@ class LSTM(nn.Module):
                 uih_data = Quantize(self.uih[i].weight.data, numBits=self.param_quant[i], if_forward=self.final_quant)
                 uoh_data = Quantize(self.uoh[i].weight.data, numBits=self.param_quant[i], if_forward=self.final_quant)
                 uch_data = Quantize(self.uch[i].weight.data, numBits=self.param_quant[i], if_forward=self.final_quant)
-                save_cgs_mat.save_mat(ufh_data, str(i) + '_wfh_q', self.param_sav)
-                save_cgs_mat.save_mat(uih_data, str(i) + '_wih_q', self.param_sav)
-                save_cgs_mat.save_mat(uoh_data, str(i) + '_woh_q', self.param_sav)
-                save_cgs_mat.save_mat(uch_data, str(i) + '_wch_q', self.param_sav)
+                save_cgs_mat.save_mat(ufh_data, str(i) + '_wfh_q' + self.arch_name, self.param_sav)
+                save_cgs_mat.save_mat(uih_data, str(i) + '_wih_q' + self.arch_name, self.param_sav)
+                save_cgs_mat.save_mat(uoh_data, str(i) + '_woh_q' + self.arch_name, self.param_sav)
+                save_cgs_mat.save_mat(uch_data, str(i) + '_wch_q' + self.arch_name, self.param_sav)
                 if i == (self.N_lstm_lay - 1):
                     self.final_quant = False
 
