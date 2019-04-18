@@ -26,18 +26,18 @@ def l1_norm(model, l1_lambda):
     for key in model:
         for param in model[key].parameters():
             dim = param.size()
-            if dim.__len__() > 1:
+            if dim.__len__() > 1 and not model[key].skip_regularization:
                 l1_reg += torch.norm(param, 1)
     return l1_reg * float(l1_lambda)
 
 def l2_norm(model, l2_lambda):
-    l1_reg = torch.tensor(0, dtype=torch.float32).cuda()
+    l2_reg = torch.tensor(0, dtype=torch.float32).cuda()
     for key in model:
         for param in model[key].parameters():
             dim = param.size()
-            if dim.__len__() > 1:
-                l1_reg += torch.norm(param, 2)
-    return l1_reg * float(l2_lambda)
+            if dim.__len__() > 1 and not model[key].skip_regularization:
+                l2_reg += torch.norm(param, 2)
+    return l2_reg * float(l2_lambda)
 
 # def gl_norm(model, num_blk):
 #     gl_reg = torch.tensor(0., dtype=torch.float32).cuda()
