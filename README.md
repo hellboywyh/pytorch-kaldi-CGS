@@ -98,7 +98,7 @@ To install PyTorch-Kaldi, do the following steps:
 1. Make sure all the software recommended in the “Prerequisites” sections are installed and are correctly working
 2. Clone the PyTorch-Kaldi repository:
 ```
-git clone https://github.com/mravanelli/pytorch-kaldi
+git clone https://github.com/razor1179/pytorch-kaldi-CGS
 ```
 3.  Go into the project folder and Install the needed packages with:
 ```
