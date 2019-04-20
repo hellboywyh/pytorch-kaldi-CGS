@@ -143,7 +143,7 @@ To avoid errors make sure that all the paths in the cfg file exist. **Please, av
 
 7. Run the ASR experiment:
 ```
-python run_exp.py cfg/TIMIT_baselines/TIMIT_MLP_mfcc_basic.cfg
+python run_exp.py cfg/TIMIT_CGS/TIMIT_LSTM_fmllr.cfg
 ```
 
 This script starts a full ASR experiment and performs training, validation, forward, and decoding steps.  A progress bar shows the evolution of all the aforementioned phases. The script *run_exp.py* progressively creates the following files in the output directory:
@@ -154,6 +154,7 @@ This script starts a full ASR experiment and performs training, validation, forw
 - *model.svg* is a picture that shows the considered model and how the various neural networks are connected. This is really useful to debug models that are more complex than this one (e.g, models based on multiple neural networks).
 - The folder *exp_files* contains several files that summarize the evolution of training and validation over the various epochs. For instance, files *.info report chunk-specific information such as the chunk_loss and error and the training time. The *.cfg files are the chunk-specific configuration files (see general architecture for more details), while files *.lst report the list of features used to train each specific chunk.
 - At the end of training, a directory called *generated outputs* containing plots of loss and errors during the various training epochs is created.
+- After validation all the weights are stored in the folder *parameters* as Matlab matrices.
 
 **Note that you can stop the experiment at any time.** If you run again the script it will automatically start from the last chunk correctly processed. The training could take a couple of hours, depending on the available GPU. Note also that if you would like to change some parameters of the configuration file (e.g., n_chunks=,fea_lst=,batch_size_train=,..) you must specify a different output folder (output_folder=).
 
