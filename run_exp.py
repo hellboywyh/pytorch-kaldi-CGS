@@ -177,7 +177,7 @@ for ep in range(N_ep):
                 next_config_file = cfg_file_list[op_counter]
 
                 # checking whether to prune or not
-                if (ck + 1) == N_ck_tr and ep >= 1:
+                if (ck + 1) == N_ck_tr and ep >= 2:
                     if_prune = True
                 else:
                     if_prune = False
