@@ -38,6 +38,9 @@ def act_fun(act_type):
     if act_type == "tanh":
         return nn.Tanh()
 
+    if act_type == "htanh":
+        return nn.Hardtanh()
+
     if act_type == "sigmoid":
         return nn.Sigmoid()
 
