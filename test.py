@@ -248,6 +248,19 @@ class LSTM(nn.Module):
 
         self.act = nn.ModuleList([])  # Activations
 
+        # List of prune mask
+        self.mask_wfx = []  # Forget
+        self.mask_ufh = []  # Forget
+
+        self.mask_wix = []  # Input
+        self.mask_uih = []  # Input
+
+        self.mask_wox = []  # Output
+        self.mask_uoh = []  # Output
+
+        self.mask_wcx = []  # Cell state
+        self.mask_uch = []  # Cell state
+
         # Input batch normalization
         if self.lstm_use_batchnorm_inp:
             self.bn0 = nn.BatchNorm1d(self.input_dim, momentum=0.05)

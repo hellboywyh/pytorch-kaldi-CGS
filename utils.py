@@ -41,9 +41,9 @@ def l2_norm(model, l2_lambda):
 
 def gl_norm(model, gl_lambda, num_blk):
     gl_reg = torch.tensor(0., dtype=torch.float32).cuda()
+    i = 0
+    j = 0
     for key in model:
-        i = 0
-        j = 0
         for param in model[key].parameters():
             dim = param.size()
             if dim.__len__() > 1 and not model[key].skip_regularization:
@@ -58,6 +58,29 @@ def gl_norm(model, gl_lambda, num_blk):
                 j += 1
             i += 1
     return gl_reg * float(gl_lambda)
+
+# def gl_norm(model, gl_lambda, num_blk):
+#     gl_reg = torch.tensor(0., dtype=torch.float32).cuda()
+#     i = 0
+#     j = 0
+#     for key in model:
+#         all_params = model[key].state_dict()
+#         for param_name in all_params:
+#             if 'weight' in param_name:
+#                 param = all_params[param_name]
+#                 dim = param.size()
+#                 if dim.__len__() > 1 and not model[key].skip_regularization:
+#                     div1 = list(torch.chunk(param,int(num_blk),1))
+#                     all_blks = []
+#                     for div2 in div1:
+#                         temp = list(torch.chunk(div2,int(num_blk),0))
+#                         for blk in temp:
+#                             all_blks.append(blk)
+#                     for l2_param in all_blks:
+#                         gl_reg += torch.norm(l2_param, 2)
+#                     j += 1
+#                 i += 1
+#     return gl_reg * float(gl_lambda)
 
 
 def run_command(cmd):

@@ -19,11 +19,11 @@ class HCGS(Module):
             `(out_features x in_features)`
     """
 
-    def __init__(self, in_features, out_features, block_size1, drop_ratio1, block_size2, drop_ratio2, des='xyz'):
+    def __init__(self, in_features, out_features, block_sizes, drop_ratios, des='xyz'):
         super(HCGS, self).__init__()
         self.in_features = in_features
         self.out_features = out_features
-        self.mask = Parameter(hcgs.conn_mat(out_features, in_features, block_size1, drop_ratio1, block_size2, drop_ratio2, des))  # torch.Tensor(, ))
+        self.mask = Parameter(hcgs.conn_mat(out_features, in_features, block_sizes, drop_ratios, des))  # torch.Tensor(, ))
         # self.reset_parameters()
 
     # def reset_parameters(self):
