@@ -13,7 +13,9 @@ import numpy as np
 from distutils.util import strtobool
 import math
 import save_cgs_mat
+import guided_hcgs
 from HCGS import HCGS as HCGS
+from HCGS import guidedHCGS as guidedHCGS
 from quantized_modules import BinarizeLinear, QuantizeLinear, Quantize, QuantizeVar, prune
 
 # uncomment below if you want to use SRU
@@ -89,6 +91,9 @@ class MLP(nn.Module):
         self.prune_perc = list(map(float, options['mlp_prune_perc'].split(',')))
         self.skip_regularization = strtobool(options['skip_regularization'])
 
+        self.guided_hcgs = strtobool(options['guided_hcgs'])
+        self.apply_guided_hcgs = strtobool(options['apply_guided_hcgs'])
+
         self.arch_name = options['arch_name']
 
         if self.to_do == 'train':
@@ -109,6 +114,10 @@ class MLP(nn.Module):
         # List of CGS
         if self.mlp_hcgs:
             self.hcgs = nn.ModuleList([])
+
+        # List of guided HCGS masks
+        if self.guided_hcgs:
+            self.ghcgs = nn.ModuleList([])
 
         # List of prune mask
         if self.prune:
@@ -177,6 +186,9 @@ class MLP(nn.Module):
                 -np.sqrt(0.01 / (current_input + self.dnn_lay[i])), np.sqrt(0.01 / (current_input + self.dnn_lay[i]))))
             self.wx[i].bias = torch.nn.Parameter(torch.zeros(self.dnn_lay[i]))
 
+            if self.guided_hcgs:
+                self.ghcgs.append(guidedHCGS(current_input, self.dnn_lay[i], self.hcgs_block, self.hcgs_sparse, self.wx[i].weight.data, str(i) + '_wx_' + self.arch_name))
+
             current_input = self.dnn_lay[i]
 
         self.out_dim = current_input
@@ -196,10 +208,16 @@ class MLP(nn.Module):
             if self.mlp_hcgs:
                 self.wx[i].weight.data.mul_(self.hcgs[i].mask.data)
 
+            # Applying guided HCGS mask
+            if self.guided_hcgs and self.apply_guided_hcgs:
+                self.wx[i].weight.data.mul_(self.ghcgs[i].mask.data)
+
             if self.save_mat:
                 save_cgs_mat.save_mat(self.wx[i].weight.data, str(i) + '_w_' + self.arch_name, self.param_sav)
                 if self.mlp_hcgs:
                     save_cgs_mat.save_hcgs_mat(self.hcgs[i].mask.data, str(i) + '_' + self.arch_name, self.param_sav)
+                if self.guided_hcgs and self.apply_guided_hcgs:
+                    save_cgs_mat.save_hcgs_mat(self.ghcgs[i].mask.data, str(i) + '_' + self.arch_name, self.param_sav)
                 if i == (self.N_dnn_lay - 1):
                     self.save_mat = False
 
@@ -231,6 +249,15 @@ class MLP(nn.Module):
             self.wx[i].weight.data.mul_(self.mask_wx[i][0].data)
 
         return 1
+
+    def apply_ghcgs(self):
+
+        current_input = self.input_dim
+        for i in range(self.N_dnn_lay):
+            self.ghcgs[i].mask.data = guided_hcgs.conn_mat(self.dnn_lay[i], current_input, self.hcgs_block[:], self.hcgs_sparse[:], self.wx[i].weight.data, str(i) + '_wx_' + self.arch_name)
+            current_input = self.dnn_lay[i]
+
+        return 20.0
 
 
 class LSTM_cudnn(nn.Module):
@@ -372,6 +399,9 @@ class LSTM(nn.Module):
         self.prune_perc = list(map(float, options['lstm_prune_perc'].split(',')))
         self.skip_regularization = strtobool(options['skip_regularization'])
 
+        self.guided_hcgs = strtobool(options['guided_hcgs'])
+        self.apply_guided_hcgs = strtobool(options['apply_guided_hcgs'])
+
         self.arch_name = options['arch_name']
 
         if self.to_do == 'train':
@@ -388,12 +418,26 @@ class LSTM(nn.Module):
             self.final_quant = False
             self.final_cgs = False
 
-        # List of CGS
+        # List of HCGS masks
         if self.lstm_hcgs:
             self.hcgsx = nn.ModuleList([])
             self.hcgsh = nn.ModuleList([])
 
-        # List of prune mask
+        # List of guided HCGS masks
+        if self.guided_hcgs:
+            self.ghcgs_wfx = nn.ModuleList([])
+            self.ghcgs_ufh = nn.ModuleList([])
+
+            self.ghcgs_wix = nn.ModuleList([])
+            self.ghcgs_uih = nn.ModuleList([])
+
+            self.ghcgs_wox = nn.ModuleList([])
+            self.ghcgs_uoh = nn.ModuleList([])
+
+            self.ghcgs_wcx = nn.ModuleList([])
+            self.ghcgs_uch = nn.ModuleList([])
+
+        # List of prune masks
         if self.prune:
             self.mask_wfx = []  # Forget
             self.mask_ufh = []  # Forget
@@ -505,6 +549,12 @@ class LSTM(nn.Module):
                     self.hcgsx.append(
                         HCGS(current_input, self.lstm_lay[i], self.hcgsx_block, self.hcgsx_sparse, str(i) + '_x_' + self.arch_name))
 
+                if self.guided_hcgs:
+                    self.ghcgs_wfx.append(guidedHCGS(current_input, self.lstm_lay[i], self.hcgsx_block, self.hcgsx_sparse, self.wfx[i].weight.data, str(i) + '_wfx_' + self.arch_name))
+                    self.ghcgs_wix.append(guidedHCGS(current_input, self.lstm_lay[i], self.hcgsx_block, self.hcgsx_sparse, self.wix[i].weight.data, str(i) + '_wix_' + self.arch_name))
+                    self.ghcgs_wox.append(guidedHCGS(current_input, self.lstm_lay[i], self.hcgsx_block, self.hcgsx_sparse, self.wox[i].weight.data, str(i) + '_wox_' + self.arch_name))
+                    self.ghcgs_wcx.append(guidedHCGS(current_input, self.lstm_lay[i], self.hcgsx_block, self.hcgsx_sparse, self.wcx[i].weight.data, str(i) + '_wcx_' + self.arch_name))
+
                 # Recurrent connections
                 # if self.lstm_quant and not self.final_quant:
                 if self.lstm_quant:
@@ -551,6 +601,12 @@ class LSTM(nn.Module):
                 nn.init.orthogonal_(self.uoh[i].weight)
                 nn.init.orthogonal_(self.uch[i].weight)
 
+            if self.guided_hcgs:
+                self.ghcgs_ufh.append(guidedHCGS(self.lstm_lay[i], self.lstm_lay[i], self.hcgsh_block, self.hcgsh_sparse, self.ufh[i].weight.data, str(i) + '_ufh_' + self.arch_name))
+                self.ghcgs_uih.append(guidedHCGS(self.lstm_lay[i], self.lstm_lay[i], self.hcgsh_block, self.hcgsh_sparse, self.uih[i].weight.data, str(i) + '_uih_' + self.arch_name))
+                self.ghcgs_uoh.append(guidedHCGS(self.lstm_lay[i], self.lstm_lay[i], self.hcgsh_block, self.hcgsh_sparse, self.uoh[i].weight.data, str(i) + '_uoh_' + self.arch_name))
+                self.ghcgs_uch.append(guidedHCGS(self.lstm_lay[i], self.lstm_lay[i], self.hcgsh_block, self.hcgsh_sparse, self.uch[i].weight.data, str(i) + '_uch_' + self.arch_name))
+
             # batch norm initialization
             self.bn_wfx.append(nn.BatchNorm1d(self.lstm_lay[i], momentum=0.05))
             self.bn_wix.append(nn.BatchNorm1d(self.lstm_lay[i], momentum=0.05))
@@ -595,12 +651,19 @@ class LSTM(nn.Module):
                 h_init = h_init.cuda()
                 drop_mask = drop_mask.cuda()
 
-            # Applying CGS mask
+            # Applying HCGS mask
             if self.lstm_hcgs:
                 self.wfx[i].weight.data.mul_(self.hcgsx[i].mask.data)
                 self.wix[i].weight.data.mul_(self.hcgsx[i].mask.data)
                 self.wox[i].weight.data.mul_(self.hcgsx[i].mask.data)
                 self.wcx[i].weight.data.mul_(self.hcgsx[i].mask.data)
+
+            # Applying guided HCGS mask
+            if self.guided_hcgs and self.apply_guided_hcgs:
+                self.wfx[i].weight.data.mul_(self.ghcgs_wfx[i].mask.data)
+                self.wix[i].weight.data.mul_(self.ghcgs_wix[i].mask.data)
+                self.wox[i].weight.data.mul_(self.ghcgs_wox[i].mask.data)
+                self.wcx[i].weight.data.mul_(self.ghcgs_wcx[i].mask.data)
 
             if self.save_mat:
                 save_cgs_mat.save_mat(self.wfx[i].weight.data, str(i) + '_wfx_' + self.arch_name, self.param_sav)
@@ -609,6 +672,11 @@ class LSTM(nn.Module):
                 save_cgs_mat.save_mat(self.wcx[i].weight.data, str(i) + '_wcx_' + self.arch_name, self.param_sav)
                 if self.lstm_hcgs:
                     save_cgs_mat.save_hcgs_mat(self.hcgsx[i].mask.data, str(i) + '_x_' + self.arch_name, self.param_sav)
+                if self.guided_hcgs and self.apply_guided_hcgs:
+                    save_cgs_mat.save_hcgs_mat(self.ghcgs_wfx[i].mask.data, str(i) + '_wfx_' + self.arch_name, self.param_sav)
+                    save_cgs_mat.save_hcgs_mat(self.ghcgs_wix[i].mask.data, str(i) + '_wix_' + self.arch_name, self.param_sav)
+                    save_cgs_mat.save_hcgs_mat(self.ghcgs_wox[i].mask.data, str(i) + '_wox_' + self.arch_name, self.param_sav)
+                    save_cgs_mat.save_hcgs_mat(self.ghcgs_wcx[i].mask.data, str(i) + '_wcx_' + self.arch_name, self.param_sav)
 
             if self.final_quant and self.lstm_quant:
                 wfx_data = Quantize(self.wfx[i].weight.data, numBits=self.param_quant[i], if_forward=self.final_quant)
@@ -647,6 +715,13 @@ class LSTM(nn.Module):
                 self.uoh[i].weight.data.mul_(self.hcgsh[i].mask.data)
                 self.uch[i].weight.data.mul_(self.hcgsh[i].mask.data)
 
+            # Applying guided HCGS mask
+            if self.guided_hcgs and self.apply_guided_hcgs:
+                self.ufh[i].weight.data.mul_(self.ghcgs_ufh[i].mask.data)
+                self.uih[i].weight.data.mul_(self.ghcgs_uih[i].mask.data)
+                self.uoh[i].weight.data.mul_(self.ghcgs_uoh[i].mask.data)
+                self.uch[i].weight.data.mul_(self.ghcgs_uch[i].mask.data)
+
             if self.save_mat:
                 save_cgs_mat.save_mat(self.ufh[i].weight.data, str(i) + '_wfh_' + self.arch_name, self.param_sav)
                 save_cgs_mat.save_mat(self.uih[i].weight.data, str(i) + '_wih_' + self.arch_name, self.param_sav)
@@ -654,6 +729,11 @@ class LSTM(nn.Module):
                 save_cgs_mat.save_mat(self.uch[i].weight.data, str(i) + '_wch_' + self.arch_name, self.param_sav)
                 if self.lstm_hcgs:
                     save_cgs_mat.save_hcgs_mat(self.hcgsh[i].mask.data, str(i) + '_h_' + self.arch_name, self.param_sav)
+                if self.guided_hcgs and self.apply_guided_hcgs:
+                    save_cgs_mat.save_hcgs_mat(self.ghcgs_ufh[i].mask.data, str(i) + '_ufh_' + self.arch_name, self.param_sav)
+                    save_cgs_mat.save_hcgs_mat(self.ghcgs_uih[i].mask.data, str(i) + '_uih_' + self.arch_name, self.param_sav)
+                    save_cgs_mat.save_hcgs_mat(self.ghcgs_uoh[i].mask.data, str(i) + '_uoh_' + self.arch_name, self.param_sav)
+                    save_cgs_mat.save_hcgs_mat(self.ghcgs_uch[i].mask.data, str(i) + '_uch_' + self.arch_name, self.param_sav)
                 if i == (self.N_lstm_lay - 1):
                     self.save_mat = False
 
@@ -724,6 +804,25 @@ class LSTM(nn.Module):
             self.uch[i].weight.data.mul_(self.mask_uch[i][0].data)
 
         return 1
+
+    def apply_ghcgs(self):
+
+        current_input = self.input_dim
+        for i in range(self.N_lstm_lay):
+            self.ghcgs_wfx[i].mask.data = guided_hcgs.conn_mat(self.lstm_lay[i], current_input, self.hcgsx_block[:], self.hcgsx_sparse[:], self.wfx[i].weight.data, str(i) + '_wfx_' + self.arch_name)
+            self.ghcgs_wix[i].mask.data = guided_hcgs.conn_mat(self.lstm_lay[i], current_input, self.hcgsx_block[:], self.hcgsx_sparse[:], self.wix[i].weight.data, str(i) + '_wix_' + self.arch_name)
+            self.ghcgs_wox[i].mask.data = guided_hcgs.conn_mat(self.lstm_lay[i], current_input, self.hcgsx_block[:], self.hcgsx_sparse[:], self.wox[i].weight.data, str(i) + '_wox_' + self.arch_name)
+            self.ghcgs_wcx[i].mask.data = guided_hcgs.conn_mat(self.lstm_lay[i], current_input, self.hcgsx_block[:], self.hcgsx_sparse[:], self.wcx[i].weight.data, str(i) + '_wcx_' + self.arch_name)
+            self.ghcgs_ufh[i].mask.data = guided_hcgs.conn_mat(self.lstm_lay[i], self.lstm_lay[i], self.hcgsh_block[:], self.hcgsh_sparse[:], self.ufh[i].weight.data, str(i) + '_ufh_' + self.arch_name)
+            self.ghcgs_uih[i].mask.data = guided_hcgs.conn_mat(self.lstm_lay[i], self.lstm_lay[i], self.hcgsh_block[:], self.hcgsh_sparse[:], self.uih[i].weight.data, str(i) + '_uih_' + self.arch_name)
+            self.ghcgs_uoh[i].mask.data = guided_hcgs.conn_mat(self.lstm_lay[i], self.lstm_lay[i], self.hcgsh_block[:], self.hcgsh_sparse[:], self.uoh[i].weight.data, str(i) + '_uoh_' + self.arch_name)
+            self.ghcgs_uch[i].mask.data = guided_hcgs.conn_mat(self.lstm_lay[i], self.lstm_lay[i], self.hcgsh_block[:], self.hcgsh_sparse[:], self.uch[i].weight.data, str(i) + '_uch_' + self.arch_name)
+            if self.bidir:
+                current_input = 2 * self.lstm_lay[i]
+            else:
+                current_input = self.lstm_lay[i]
+
+        return 20.0
 
 
 class GRU(nn.Module):

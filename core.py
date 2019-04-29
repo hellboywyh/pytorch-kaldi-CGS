@@ -22,7 +22,7 @@ from utils import shift
 
 
 def run_nn(data_name, data_set, data_end_index, fea_dict, lab_dict, arch_dict, cfg_file, processed_first,
-           next_config_file, if_prune=False):
+           next_config_file, if_prune=False, if_apply_ghcgs=False):
     # This function processes the current chunk using the information in cfg_file. In parallel, the next chunk is load into the CPU memory
 
     # Reading chunk-specific cfg file (first argument-mandatory file)
@@ -262,6 +262,12 @@ def run_nn(data_name, data_set, data_end_index, fea_dict, lab_dict, arch_dict, c
                 prune_ret = nns[net].prune_parameters()
                 if prune_ret == 1:
                     print('Pruning complete of ' + net)
+
+            # creating guided HCGS masks
+            if nns[net].guided_hcgs and not nns[net].apply_guided_hcgs:
+                ghcgs_ret = nns[net].apply_ghcgs()
+                # if ghcgs_ret == 1:
+                #     print('')
 
             checkpoint['model_par'] = nns[net].state_dict()
             checkpoint['optimizer_par'] = optimizers[net].state_dict()

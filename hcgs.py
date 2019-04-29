@@ -6,7 +6,7 @@ from torch.nn.parameter import Parameter
 import torch.nn as nn
 
 def conn_mat(n_in, n_out, block_sizes, drop_ratios, mat_num='1', dir='/home/dkadetot/saved_mat', equal_blks_for_input = True):
-    if not block_sizes.__len__ != drop_ratios.__len__:
+    if not len(block_sizes) == len(drop_ratios):
         print('block size and drop ratio should have the same length!')
         exit()
     block_sizes.reverse()

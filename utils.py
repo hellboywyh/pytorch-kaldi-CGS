@@ -1081,6 +1081,11 @@ def write_cfg_chunk(cfg_file, config_chunk_file, cfg_file_proto_chunk, pt_files,
     for arch in pt_files.keys():
         config_chunk[arch]['out_folder'] = config['exp']['out_folder'] + '/parameters'
 
+    # Changing apply_guided_hcgs after specified epochs
+    if ep >= int(config_chunk['exp']['apply_guided_ep']):
+        for arch in pt_files.keys():
+            config_chunk[arch]['apply_guided_hcgs'] = 'True'
+
     # writing the current learning rate
     for lr_arch in lr.keys():
         config_chunk[lr_arch]['arch_lr'] = str(lr[lr_arch][ep])
@@ -1948,7 +1953,16 @@ def forward_model(fea_dict, lab_dict, arch_dict, model, nns, costs, inp, inp_out
 
         if operation == 'cost_gl':
             if to_do != 'forward':
-                outs_dict[out_name] = gl_norm(nns, inp2, inp3)
+                key_count = 0
+                key_save = ''
+                for key in nns:
+                    if key_count == 0:
+                        key_save = key
+                    key_count += 1
+                if nns[key_save].apply_guided_hcgs:
+                    outs_dict[out_name] = torch.tensor(0., dtype=torch.float32).cuda()
+                else:
+                    outs_dict[out_name] = gl_norm(nns, inp2, inp3)
 
         if operation == 'cost_err':
 
