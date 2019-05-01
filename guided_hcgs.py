@@ -6,7 +6,7 @@ from torch.nn.parameter import Parameter
 import torch.nn as nn
 import guided_choices as choice
 
-def conn_mat(n_in, n_out, block_sizes, drop_ratios, w_mat, mat_num='1', dir='/home/dkadetot/saved_mat', equal_blks_for_input = True):
+def conn_mat(n_in, n_out, block_sizes, drop_ratios, w_mat, mat_num='1', dir='/home/dkadetot/saved_mat', equal_blks_for_input = True, for_test = False):
     if not len(block_sizes) == len(drop_ratios):
         print('block size and drop ratio should have the same length!')
         exit()
@@ -64,12 +64,14 @@ def conn_mat(n_in, n_out, block_sizes, drop_ratios, w_mat, mat_num='1', dir='/ho
             conn_mat[guided_choices[j]*block_size:(guided_choices[j]+1)*block_size, (n_blk_cols-1)*block_size:n_out] = 1
             r_h, c_h = conn_mat[guided_choices[j] * block_size:(guided_choices[j] + 1) * block_size, (n_blk_cols - 1) * block_size:n_out].shape
             conn_mat[guided_choices[j] * block_size:(guided_choices[j] + 1) * block_size, (n_blk_cols - 1) * block_size:n_out] = cgs_base.conn_mat(r_h, c_h, block_sizes[:], drop_ratios[:], equal_blks_for_input=equal_blks_for_input, recursive_call=recursive_call)
-    # Save conn_mat in mat file
-    # sio.savemat(dir + '/conn_mat%s.mat' % mat_num, {'CM%s' % mat_num: conn_mat})
-    # return conn_mat
-    conn_mat_torch = torch.Tensor(n_in, n_out)
-    conn_mat_torch = torch.from_numpy(conn_mat)
-    device = torch.device("cuda")
-    conn_mat_torch = conn_mat_torch.to(device)
-    conn_mat_torch.requires_grad_(False)
-    return conn_mat_torch
+    if for_test:
+        # Save conn_mat in mat file
+        sio.savemat(dir + '/conn_mat%s.mat' % mat_num, {'CM%s' % mat_num: conn_mat})
+        return conn_mat
+    else:
+        conn_mat_torch = torch.Tensor(n_in, n_out)
+        conn_mat_torch = torch.from_numpy(conn_mat)
+        device = torch.device("cuda")
+        conn_mat_torch = conn_mat_torch.to(device)
+        conn_mat_torch.requires_grad_(False)
+        return conn_mat_torch

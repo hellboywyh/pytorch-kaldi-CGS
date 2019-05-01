@@ -23,6 +23,16 @@ from quantized_modules import BinarizeLinear, QuantizeLinear, Quantize, Quantize
 # or you can install it from source code: https://github.com/taolei87/sru.
 # import sru
 
+def hsigmoid(x):
+    """
+    Computes element-wise hard sigmoid of x.
+    See e.g. https://github.com/Theano/Theano/blob/master/theano/tensor/nnet/sigm.py#L279
+    """
+    x = (0.2 * x) + 0.5
+    x = F.threshold(-x, -1, -1)
+    x = F.threshold(-x, 0, 0)
+    return x
+
 
 class LayerNorm(nn.Module):
 
@@ -402,6 +412,8 @@ class LSTM(nn.Module):
         self.guided_hcgs = strtobool(options['guided_hcgs'])
         self.apply_guided_hcgs = strtobool(options['apply_guided_hcgs'])
 
+        self.if_hsigmoid = strtobool(options['if_hsigmoid'])
+
         self.arch_name = options['arch_name']
 
         if self.to_do == 'train':
@@ -723,10 +735,10 @@ class LSTM(nn.Module):
                 self.uch[i].weight.data.mul_(self.ghcgs_uch[i].mask.data)
 
             if self.save_mat:
-                save_cgs_mat.save_mat(self.ufh[i].weight.data, str(i) + '_wfh_' + self.arch_name, self.param_sav)
-                save_cgs_mat.save_mat(self.uih[i].weight.data, str(i) + '_wih_' + self.arch_name, self.param_sav)
-                save_cgs_mat.save_mat(self.uoh[i].weight.data, str(i) + '_woh_' + self.arch_name, self.param_sav)
-                save_cgs_mat.save_mat(self.uch[i].weight.data, str(i) + '_wch_' + self.arch_name, self.param_sav)
+                save_cgs_mat.save_mat(self.ufh[i].weight.data, str(i) + '_ufh_' + self.arch_name, self.param_sav)
+                save_cgs_mat.save_mat(self.uih[i].weight.data, str(i) + '_uih_' + self.arch_name, self.param_sav)
+                save_cgs_mat.save_mat(self.uoh[i].weight.data, str(i) + '_uoh_' + self.arch_name, self.param_sav)
+                save_cgs_mat.save_mat(self.uch[i].weight.data, str(i) + '_uch_' + self.arch_name, self.param_sav)
                 if self.lstm_hcgs:
                     save_cgs_mat.save_hcgs_mat(self.hcgsh[i].mask.data, str(i) + '_h_' + self.arch_name, self.param_sav)
                 if self.guided_hcgs and self.apply_guided_hcgs:
@@ -742,10 +754,10 @@ class LSTM(nn.Module):
                 uih_data = Quantize(self.uih[i].weight.data, numBits=self.param_quant[i], if_forward=self.final_quant)
                 uoh_data = Quantize(self.uoh[i].weight.data, numBits=self.param_quant[i], if_forward=self.final_quant)
                 uch_data = Quantize(self.uch[i].weight.data, numBits=self.param_quant[i], if_forward=self.final_quant)
-                save_cgs_mat.save_mat(ufh_data, str(i) + '_wfh_q_' + self.arch_name, self.param_sav)
-                save_cgs_mat.save_mat(uih_data, str(i) + '_wih_q_' + self.arch_name, self.param_sav)
-                save_cgs_mat.save_mat(uoh_data, str(i) + '_woh_q_' + self.arch_name, self.param_sav)
-                save_cgs_mat.save_mat(uch_data, str(i) + '_wch_q_' + self.arch_name, self.param_sav)
+                save_cgs_mat.save_mat(ufh_data, str(i) + '_ufh_q_' + self.arch_name, self.param_sav)
+                save_cgs_mat.save_mat(uih_data, str(i) + '_uih_q_' + self.arch_name, self.param_sav)
+                save_cgs_mat.save_mat(uoh_data, str(i) + '_uoh_q_' + self.arch_name, self.param_sav)
+                save_cgs_mat.save_mat(uch_data, str(i) + '_uch_q_' + self.arch_name, self.param_sav)
                 if i == (self.N_lstm_lay - 1):
                     self.final_quant = False
 
@@ -757,9 +769,15 @@ class LSTM(nn.Module):
             for k in range(x.shape[0]):
 
                 # LSTM equations
-                ft = torch.sigmoid(wfx_out[k] + self.ufh[i](ht))
-                it = torch.sigmoid(wix_out[k] + self.uih[i](ht))
-                ot = torch.sigmoid(wox_out[k] + self.uoh[i](ht))
+                if self.if_hsigmoid:
+                    ft = hsigmoid(wfx_out[k] + self.ufh[i](ht))
+                    it = hsigmoid(wix_out[k] + self.uih[i](ht))
+                    ot = hsigmoid(wox_out[k] + self.uoh[i](ht))
+                else:
+                    ft = torch.sigmoid(wfx_out[k] + self.ufh[i](ht))
+                    it = torch.sigmoid(wix_out[k] + self.uih[i](ht))
+                    ot = torch.sigmoid(wox_out[k] + self.uoh[i](ht))
+
                 ct = it * self.act[i](wcx_out[k] + self.uch[i](ht)) * drop_mask + ft * ct
                 ht = ot * self.act[i](ct)
 

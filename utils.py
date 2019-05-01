@@ -1945,11 +1945,29 @@ def forward_model(fea_dict, lab_dict, arch_dict, model, nns, costs, inp, inp_out
 
         if operation == 'cost_l1':
             if to_do != 'forward':
-                outs_dict[out_name] = l1_norm(nns, inp2)
+                key_count = 0
+                key_save = ''
+                for key in nns:
+                    if key_count == 0:
+                        key_save = key
+                    key_count += 1
+                if nns[key_save].apply_guided_hcgs:
+                    outs_dict[out_name] = torch.tensor(0., dtype=torch.float32).cuda()
+                else:
+                    outs_dict[out_name] = l1_norm(nns, inp2)
 
         if operation == 'cost_l2':
             if to_do != 'forward':
-                outs_dict[out_name] = l2_norm(nns, inp2)
+                key_count = 0
+                key_save = ''
+                for key in nns:
+                    if key_count == 0:
+                        key_save = key
+                    key_count += 1
+                if nns[key_save].apply_guided_hcgs:
+                    outs_dict[out_name] = torch.tensor(0., dtype=torch.float32).cuda()
+                else:
+                    outs_dict[out_name] = l2_norm(nns, inp2)
 
         if operation == 'cost_gl':
             if to_do != 'forward':
