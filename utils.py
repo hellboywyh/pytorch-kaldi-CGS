@@ -1082,9 +1082,17 @@ def write_cfg_chunk(cfg_file, config_chunk_file, cfg_file_proto_chunk, pt_files,
         config_chunk[arch]['out_folder'] = config['exp']['out_folder'] + '/parameters'
 
     # Changing apply_guided_hcgs after specified epochs
-    if ep >= int(config_chunk['exp']['apply_guided_ep']):
+    if config.has_option('exp', 'apply_guided_ep'):
+        if (ep + 1) >= int(config_chunk['exp']['apply_guided_ep']):
+            for arch in pt_files.keys():
+                config_chunk[arch]['apply_guided_hcgs'] = 'True'
+        else:
+            for arch in pt_files.keys():
+                config_chunk[arch]['apply_guided_hcgs'] = 'False'
+    else:
         for arch in pt_files.keys():
-            config_chunk[arch]['apply_guided_hcgs'] = 'True'
+            config_chunk[arch]['apply_guided_hcgs'] = 'False'
+            config_chunk[arch]['guided_hcgs'] = 'False'
 
     # writing the current learning rate
     for lr_arch in lr.keys():

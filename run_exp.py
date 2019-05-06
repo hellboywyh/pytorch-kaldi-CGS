@@ -59,6 +59,11 @@ forward_data_lst = config['data_use']['forward_with'].split(',')
 max_seq_length_train = config['batches']['max_seq_length_train']
 forward_save_files = list(map(strtobool, config['forward']['save_out_file'].split(',')))
 
+if config.has_option('exp', 'apply_prune_ep'):
+    apply_prune_ep = int(config.get('exp', 'apply_prune_ep'))
+else:
+    apply_prune_ep = 0
+
 print("- Reading config file......OK!")
 
 # Copy the global cfg file into the output folder
@@ -177,7 +182,7 @@ for ep in range(N_ep):
                 next_config_file = cfg_file_list[op_counter]
 
                 # checking whether to prune or not
-                if (ck + 1) == N_ck_tr and ep >= 0:
+                if (ck + 1) == N_ck_tr and (ep + 1) >= apply_prune_ep:
                     if_prune = True
                 else:
                     if_prune = False
