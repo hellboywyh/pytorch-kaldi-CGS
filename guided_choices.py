@@ -18,7 +18,7 @@ def guided_array_rows (w_mat, n_blk, n_blk_sels, blk_size):
         w_mat2 = w_mat[: ,x:x + c1]
         temp = torch.randn(1, 1, r, c1)
         temp[0, 0, :, :] = w_mat2
-        if r == blk_size:
+        if r == blk_size and c1 >= blk_size:
             avg = torch.nn.AvgPool2d(blk_size, c1)
         else:
             avg = torch.nn.AvgPool2d((r, c1), c1)

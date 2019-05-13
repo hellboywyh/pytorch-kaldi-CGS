@@ -1898,7 +1898,7 @@ def forward_model(fea_dict, lab_dict, arch_dict, model, nns, costs, inp, inp_out
     for line in model:
         [out_name, operation, inp1, inp2] = list(re.findall(pattern, line)[0])
 
-        if out_name == 'loss_gl':
+        if out_name[0:7] == 'loss_gl':
             pattern2 = '(.*)=(.*)\((.*),(.*),(.*)\)'
             [out_name, operation, inp1, inp2, inp3] = list(re.findall(pattern2, line)[0])
 
