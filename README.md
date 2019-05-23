@@ -1,6 +1,6 @@
 # The PyTorch-Kaldi-CGS Speech Recognition Toolkit
 
-PyTorch-Kaldi-CGS is an open-source repository for developing state-of-the-art DNN/HMM speech recognition systems with HCGS implemented during training. This repository is forked from PyTorch-Kaldi (https://github.com/mravanelli/pytorch-kaldi) and additional code has been written to incorporate HCGS and other sparsity techniqies. The DNN part is managed by PyTorch, while feature extraction, label computation, and decoding are performed with the Kaldi toolkit.
+PyTorch-Kaldi-CGS is an open-source repository for developing state-of-the-art DNN/HMM speech recognition systems with HCGS implemented during training. This repository is forked from PyTorch-Kaldi (https://github.com/mravanelli/pytorch-kaldi) and additional code has been written to incorporate HCGS and other sparsity techniques. The DNN part is managed by PyTorch, while feature extraction, label computation, and decoding are performed with the Kaldi toolkit.
 
 This repository contains the PyTorch-Kaldi toolkit (PyTorch-Kaldi-v1.0). To take a look into the previous version (PyTorch-Kaldi-v0.1), [click here](https://bitbucket.org/mravanelli/pytorch-kaldi-v0.0/src/master/).
 
