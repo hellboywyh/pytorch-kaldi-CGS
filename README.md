@@ -864,6 +864,7 @@ Note that in the [Model] section we added this line “err_final=cost_err(dec_ou
 You can train the system running the following command:
 ``` 
 python run_exp.py cfg/TIMIT_baselines/TIMIT_MLP_fbank_autoencoder.cfg
+python run_exp.py cfg/TIMIT_baselines_wyh/TIMIT_MLP_mfcc_basic.cfg
 ``` 
 The results should look like this:
 

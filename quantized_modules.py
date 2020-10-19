@@ -138,8 +138,7 @@ def QuantizeVar(tensor,quant_mode='det',  params=None, numBits=3):
         quant_fixed(tensor, params)
     return tensor
 
-import torch.nn._functions as tnnf
-
+#import torch.nn._functions as tnnf
 
 class BinarizeLinear(Module):
 
@@ -179,14 +178,16 @@ class BinarizeLinear(Module):
         )
 
 
-class QuantizeLinear(Module):
-
+# class QuantizeLinear(Module):
+class QuantizeLinear(nn.Module):
+    
     def __init__(self, in_features, out_features, numBits=8, bias=True, if_forward=False, if_inp_quant=False, inp_quant=16):
         super(QuantizeLinear, self).__init__()
         self.in_features = in_features
         self.out_features = out_features
         self.weight = Parameter(torch.Tensor(out_features, in_features))
         self.weight_org = torch.Tensor(out_features, in_features)
+
         if bias:
             self.bias = Parameter(torch.Tensor(out_features))
         else:
@@ -219,6 +220,23 @@ class QuantizeLinear(Module):
             out = F.linear(input, self.weight, self.bias)
             self.weight.data = self.weight_org
         return out
+
+    # def forward(self, input):
+    #     if self.if_forward:
+    #         self.weight.data = Quantize(self.weight.data, numBits=self.numBits, if_forward=self.if_forward, balanced=False)
+    #         # self.weight.data = QuantizeVar(self.weight.data, numBits=self.numBits)
+    #         # if self.if_inp_quant:
+    #         #     input.data = Quantize_inp(input.data, self.inp_quant, self.if_forward)
+    #         out = F.linear(input, self.weight, self.bias)
+    #     else:
+    #         self.weight_org = self.weight.data
+    #         # self.weight.data = Quantize(self.weight.data, numBits=self.numBits, balanced=False)
+    #         # # self.weight.data = QuantizeVar(self.weight.data, numBits=self.numBits)
+    #         # if self.if_inp_quant:
+    #         #     input.data = Quantize_inp(input.data, self.inp_quant)
+    #         # out = F.linear(input, self.weight, self.bias)
+    #         self.weight.data = self.weight_org
+    #     return out
 
     def extra_repr(self):
         return 'in_features={}, out_features={}, bias={}'.format(

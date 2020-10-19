@@ -152,7 +152,6 @@ def run_nn(data_name, data_set, data_end_index, fea_dict, lab_dict, arch_dict, c
 
     inp_dim = data_set.shape[1]
     for i in range(N_batches):
-
         max_len = 0
 
         if seq_model:
@@ -213,7 +212,6 @@ def run_nn(data_name, data_set, data_end_index, fea_dict, lab_dict, arch_dict, c
             for out_id in range(len(forward_outs)):
 
                 out_save = outs_dict[forward_outs[out_id]].data.cpu().numpy()
-
                 if forward_normalize_post[out_id]:
                     # read the config file
                     counts = load_counts(forward_count_files[out_id])

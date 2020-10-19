@@ -1766,6 +1766,7 @@ def model_init(inp_out_dict, model, config, arch_dict, use_cuda, multi_gpu, to_d
 
             # import the class
             module = importlib.import_module(config[arch_dict[inp1][0]]['arch_library'])
+            # print(module)
             nn_class = getattr(module, config[arch_dict[inp1][0]]['arch_class'])
 
             # add use cuda and todo options
@@ -1793,7 +1794,7 @@ def model_init(inp_out_dict, model, config, arch_dict, use_cuda, multi_gpu, to_d
 
             # addigng nn into the nns dict
             nns[arch_dict[inp1][1]] = net
-
+            print("nns", nns)
             if multi_gpu:
                 out_dim = net.module.out_dim
             else:
@@ -1897,7 +1898,7 @@ def forward_model(fea_dict, lab_dict, arch_dict, model, nns, costs, inp, inp_out
 
     for line in model:
         [out_name, operation, inp1, inp2] = list(re.findall(pattern, line)[0])
-
+        # print("out_name, operation, inp1, inp2", out_name, operation, inp1, inp2)
         if out_name[0:7] == 'loss_gl':
             pattern2 = '(.*)=(.*)\((.*),(.*),(.*)\)'
             [out_name, operation, inp1, inp2, inp3] = list(re.findall(pattern2, line)[0])

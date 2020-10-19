@@ -16,7 +16,6 @@ import re, gzip, struct
 def load_dataset(fea_scp, fea_opts, lab_folder, lab_opts, left, right, max_sequence_length, output_folder,
                  fea_only=False):
     fea = {k: m for k, m in read_mat_ark('ark:copy-feats scp:' + fea_scp + ' ark:- |' + fea_opts, output_folder)}
-
     if not fea_only:
         lab = {k: v for k, v in read_vec_int_ark(
             'gunzip -c ' + lab_folder + '/ali*.gz | ' + lab_opts + ' ' + lab_folder + '/final.mdl ark:- ark:-|',
@@ -31,6 +30,7 @@ def load_dataset(fea_scp, fea_opts, lab_folder, lab_opts, left, right, max_seque
     lab_conc = []
 
     tmp = 0
+    
     for k in sorted(sorted(fea.keys()), key=lambda k: len(fea[k])):
 
         #####
@@ -121,8 +121,7 @@ def context_window(fea, left, right):
 def load_chunk(fea_scp, fea_opts, lab_folder, lab_opts, left, right, max_sequence_length, output_folder,
                fea_only=False):
     # open the file
-    [data_name, data_set, data_lab, end_index] = load_dataset(fea_scp, fea_opts, lab_folder, lab_opts, left, right,
-                                                              max_sequence_length, output_folder, fea_only)
+    [data_name, data_set, data_lab, end_index] = load_dataset(fea_scp, fea_opts, lab_folder, lab_opts, left, right,max_sequence_length, output_folder, fea_only)
 
     # Context window
     if left != 0 or right != 0:
@@ -317,7 +316,6 @@ def open_or_fd(file, output_folder, mode='rb'):
      Eventually seeks in the 'file' argument contains ':offset' suffix.
     """
     offset = None
-
     try:
         # strip 'ark:' prefix from r{x,w}filename (optional),
         if re.search('^(ark|scp)(,scp|,b|,t|,n?f|,n?p|,b?o|,n?s|,n?cs)*:', file):

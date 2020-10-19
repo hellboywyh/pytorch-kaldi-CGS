@@ -17,7 +17,9 @@ import guided_hcgs
 from HCGS import HCGS as HCGS
 from HCGS import guidedHCGS as guidedHCGS
 from quantized_modules import BinarizeLinear, QuantizeLinear, Quantize, QuantizeVar, prune
+from Pattern import Pattern
 
+from data_io import write_mat, open_or_fd
 # uncomment below if you want to use SRU
 # and you need to install SRU: pip install sru[cuda].
 # or you can install it from source code: https://github.com/taolei87/sru.
@@ -104,6 +106,17 @@ class MLP(nn.Module):
         self.guided_hcgs = strtobool(options['guided_hcgs'])
         self.apply_guided_hcgs = strtobool(options['apply_guided_hcgs'])
 
+        self.mlp_pattern = strtobool(options['mlp_pattern'])
+        # self.sparse_mode = options['sparse_mode']
+        self.pattern_mode = options['pattern_mode']
+        self.pattern_shape = list(map(int, options['pattern_shape'].split(',')))
+        self.pattern_nnz = list(map(int, options['pattern_nnz'].split(',')))
+        self.pattern_num = list(map(int, options['pattern_num'].split(',')))
+
+        self.pattern_from_file = False
+        if "pattern_from_file" in options.keys():
+            self.pattern_from_file = options['pattern_from_file']
+
         self.arch_name = options['arch_name']
 
         if self.to_do == 'train':
@@ -128,6 +141,11 @@ class MLP(nn.Module):
         # List of guided HCGS masks
         if self.guided_hcgs:
             self.ghcgs = nn.ModuleList([])
+
+        # List of Pattern masks
+        if self.mlp_pattern:
+            self.pat = nn.ModuleList([])
+
 
         # List of prune mask
         if self.prune:
@@ -190,6 +208,10 @@ class MLP(nn.Module):
             if self.mlp_hcgs:
                 self.hcgs.append(
                     HCGS(current_input, self.dnn_lay[i], self.hcgs_block, self.hcgs_sparse, str(i) + '_' + self.arch_name))
+            # Pattern of Feed-forward connections
+            if self.mlp_pattern:
+                self.pat.append(
+                        Pattern(self.wx[i].weight.data, self.pattern_mode, self.pattern_shape,self.pattern_nnz[i],self.pattern_num[i],str(i) + '_x_' + self.arch_name, self.pattern_from_file))
 
             # weight initialization
             self.wx[i].weight = torch.nn.Parameter(torch.Tensor(self.dnn_lay[i], current_input).uniform_(
@@ -222,12 +244,19 @@ class MLP(nn.Module):
             if self.guided_hcgs and self.apply_guided_hcgs:
                 self.wx[i].weight.data.mul_(self.ghcgs[i].mask.data)
 
+            # Applying Pattern mask
+            if self.mlp_pattern:
+                self.wx[i].weight.data.mul_(self.pat[i].mask.data)
+
+
             if self.save_mat:
                 save_cgs_mat.save_mat(self.wx[i].weight.data, str(i) + '_w_' + self.arch_name, self.param_sav)
                 if self.mlp_hcgs:
                     save_cgs_mat.save_hcgs_mat(self.hcgs[i].mask.data, str(i) + '_' + self.arch_name, self.param_sav)
                 if self.guided_hcgs and self.apply_guided_hcgs:
                     save_cgs_mat.save_hcgs_mat(self.ghcgs[i].mask.data, str(i) + '_' + self.arch_name, self.param_sav)
+                if self.mlp_pattern:
+                    save_cgs_mat.save_hcgs_mat(self.pat[i].mask.data, str(i) + '_' + self.arch_name, self.param_sav)
                 if i == (self.N_dnn_lay - 1):
                     self.save_mat = False
 
@@ -393,7 +422,6 @@ class LSTM(nn.Module):
         self.bidir = strtobool(options['lstm_bidir'])
         self.use_cuda = strtobool(options['use_cuda'])
         self.to_do = options['to_do']
-
         self.lstm_hcgs = strtobool(options['lstm_hcgs'])
         self.hcgsx_block = list(map(int, options['hcgsx_block'].split(',')))
         self.hcgsh_block = list(map(int, options['hcgsh_block'].split(',')))
@@ -414,6 +442,17 @@ class LSTM(nn.Module):
 
         self.if_hsigmoid = strtobool(options['if_hsigmoid'])
 
+        self.lstm_pattern = strtobool(options['lstm_pattern'])
+        # self.sparse_mode = options['sparse_mode']
+        self.pattern_mode = options['pattern_mode']
+        self.pattern_shape = list(map(int, options['pattern_shape'].split(',')))
+        self.pattern_nnz = list(map(int, options['pattern_nnz'].split(',')))
+        self.pattern_num = list(map(int, options['pattern_num'].split(',')))
+
+        self.pattern_from_file = False
+        if "pattern_from_file" in options.keys():
+            self.pattern_from_file = options['pattern_from_file']
+        
         self.arch_name = options['arch_name']
 
         if self.to_do == 'train':
@@ -448,6 +487,11 @@ class LSTM(nn.Module):
 
             self.ghcgs_wcx = nn.ModuleList([])
             self.ghcgs_uch = nn.ModuleList([])
+
+        # List of Pattern masks
+        if self.lstm_pattern:
+            self.patx = nn.ModuleList([])
+            self.path = nn.ModuleList([])
 
         # List of prune masks
         if self.prune:
@@ -567,6 +611,11 @@ class LSTM(nn.Module):
                     self.ghcgs_wox.append(guidedHCGS(current_input, self.lstm_lay[i], self.hcgsx_block, self.hcgsx_sparse, self.wox[i].weight.data, str(i) + '_wox_' + self.arch_name))
                     self.ghcgs_wcx.append(guidedHCGS(current_input, self.lstm_lay[i], self.hcgsx_block, self.hcgsx_sparse, self.wcx[i].weight.data, str(i) + '_wcx_' + self.arch_name))
 
+                # Pat of Feed-forward connections
+                if self.lstm_pattern:
+                    self.patx.append(
+                        Pattern(self.wfx[i].weight.data, self.pattern_mode, self.pattern_shape,self.pattern_nnz[i],self.pattern_num[i],str(i) + '_x_' + self.arch_name, self.pattern_from_file))
+                
                 # Recurrent connections
                 # if self.lstm_quant and not self.final_quant:
                 if self.lstm_quant:
@@ -607,6 +656,11 @@ class LSTM(nn.Module):
                     self.hcgsh.append(
                         HCGS(self.lstm_lay[i], self.lstm_lay[i], self.hcgsh_block, self.hcgsh_sparse, str(i) + '_h_' + self.arch_name))
 
+                # Pat of Recurrent connections
+                if self.lstm_pattern:
+                    self.path.append(
+                        Pattern(self.ufh[i].weight.data, self.pattern_mode, self.pattern_shape,self.pattern_nnz[i],self.pattern_num[i],str(i) + '_x_' + self.arch_name, self.pattern_from_file))
+                
             if self.lstm_orthinit:
                 nn.init.orthogonal_(self.ufh[i].weight)
                 nn.init.orthogonal_(self.uih[i].weight)
@@ -635,7 +689,6 @@ class LSTM(nn.Module):
         self.out_dim = self.lstm_lay[i] + self.bidir * self.lstm_lay[i]
 
     def forward(self, x):
-
         # Applying Layer/Batch Norm
         if bool(self.lstm_use_laynorm_inp):
             x = self.ln0((x))
@@ -643,10 +696,11 @@ class LSTM(nn.Module):
         if bool(self.lstm_use_batchnorm_inp):
             x_bn = self.bn0(x.view(x.shape[0] * x.shape[1], x.shape[2]))
             x = x_bn.view(x.shape[0], x.shape[1], x.shape[2])
-
+        # write_mat("./model_file", open_or_fd("./model_file/x.mat", "./model_file", "wb"), x.view(x.shape[0]*x.shape[1],x.shape[2]).data.cpu().numpy())
         for i in range(self.N_lstm_lay):
 
             # Initial state and concatenation
+            self.bidir = 0
             if self.bidir:
                 h_init = torch.zeros(2 * x.shape[1], self.lstm_lay[i])
                 x = torch.cat([x, flip(x, 0)], 1)
@@ -665,6 +719,9 @@ class LSTM(nn.Module):
 
             # Applying HCGS mask
             if self.lstm_hcgs:
+                # Updating HCGS mask 
+                ###
+
                 self.wfx[i].weight.data.mul_(self.hcgsx[i].mask.data)
                 self.wix[i].weight.data.mul_(self.hcgsx[i].mask.data)
                 self.wox[i].weight.data.mul_(self.hcgsx[i].mask.data)
@@ -672,10 +729,22 @@ class LSTM(nn.Module):
 
             # Applying guided HCGS mask
             if self.guided_hcgs and self.apply_guided_hcgs:
+                # # Updating HCGS mask 
+                # self.ghcgs_wfx[i].update(self.wfx[i].weight.data)
+                # self.ghcgs_wix[i].update(self.wix[i].weight.data)
+                # self.ghcgs_wox[i].update(self.wox[i].weight.data)
+                # self.ghcgs_wcx[i].update(self.wcx[i].weight.data)
                 self.wfx[i].weight.data.mul_(self.ghcgs_wfx[i].mask.data)
                 self.wix[i].weight.data.mul_(self.ghcgs_wix[i].mask.data)
                 self.wox[i].weight.data.mul_(self.ghcgs_wox[i].mask.data)
                 self.wcx[i].weight.data.mul_(self.ghcgs_wcx[i].mask.data)
+
+            # Applying Pattern mask
+            if self.lstm_pattern:
+                self.wfx[i].weight.data.mul_(self.patx[i].mask.data)
+                self.wix[i].weight.data.mul_(self.patx[i].mask.data)
+                self.wox[i].weight.data.mul_(self.patx[i].mask.data)
+                self.wcx[i].weight.data.mul_(self.patx[i].mask.data)
 
             if self.save_mat:
                 save_cgs_mat.save_mat(self.wfx[i].weight.data, str(i) + '_wfx_' + self.arch_name, self.param_sav)
@@ -689,6 +758,8 @@ class LSTM(nn.Module):
                     save_cgs_mat.save_hcgs_mat(self.ghcgs_wix[i].mask.data, str(i) + '_wix_' + self.arch_name, self.param_sav)
                     save_cgs_mat.save_hcgs_mat(self.ghcgs_wox[i].mask.data, str(i) + '_wox_' + self.arch_name, self.param_sav)
                     save_cgs_mat.save_hcgs_mat(self.ghcgs_wcx[i].mask.data, str(i) + '_wcx_' + self.arch_name, self.param_sav)
+                if self.lstm_pattern:
+                    save_cgs_mat.save_hcgs_mat(self.patx[i].mask.data, str(i) + '_x_' + self.arch_name, self.param_sav)
 
             if self.final_quant and self.lstm_quant:
                 wfx_data = Quantize(self.wfx[i].weight.data, numBits=self.param_quant[i], if_forward=self.final_quant)
@@ -699,6 +770,7 @@ class LSTM(nn.Module):
                 save_cgs_mat.save_mat(wix_data, str(i) + '_wix_q_' + self.arch_name, self.param_sav)
                 save_cgs_mat.save_mat(wox_data, str(i) + '_wox_q_' + self.arch_name, self.param_sav)
                 save_cgs_mat.save_mat(wcx_data, str(i) + '_wcx_q_' + self.arch_name, self.param_sav)
+
 
             # Feed-forward affine transformations (all steps in parallel)
             wfx_out = self.wfx[i](x)
@@ -727,6 +799,13 @@ class LSTM(nn.Module):
                 self.uoh[i].weight.data.mul_(self.hcgsh[i].mask.data)
                 self.uch[i].weight.data.mul_(self.hcgsh[i].mask.data)
 
+            # Applying Pattern mask
+            if self.lstm_pattern:
+                self.ufh[i].weight.data.mul_(self.path[i].mask.data)
+                self.uih[i].weight.data.mul_(self.path[i].mask.data)
+                self.uoh[i].weight.data.mul_(self.path[i].mask.data)
+                self.uch[i].weight.data.mul_(self.path[i].mask.data)
+
             # Applying guided HCGS mask
             if self.guided_hcgs and self.apply_guided_hcgs:
                 self.ufh[i].weight.data.mul_(self.ghcgs_ufh[i].mask.data)
@@ -746,6 +825,8 @@ class LSTM(nn.Module):
                     save_cgs_mat.save_hcgs_mat(self.ghcgs_uih[i].mask.data, str(i) + '_uih_' + self.arch_name, self.param_sav)
                     save_cgs_mat.save_hcgs_mat(self.ghcgs_uoh[i].mask.data, str(i) + '_uoh_' + self.arch_name, self.param_sav)
                     save_cgs_mat.save_hcgs_mat(self.ghcgs_uch[i].mask.data, str(i) + '_uch_' + self.arch_name, self.param_sav)
+                if self.lstm_pattern:
+                    save_cgs_mat.save_hcgs_mat(self.path[i].mask.data, str(i) + '_h_' + self.arch_name, self.param_sav)
                 if i == (self.N_lstm_lay - 1):
                     self.save_mat = False
 
@@ -765,10 +846,20 @@ class LSTM(nn.Module):
             hiddens = []
             ct = h_init
             ht = h_init
-
+            # write_mat("./model_file", open_or_fd("./model_file/h_init.mat", "./model_file", "wb"), h_init.data.cpu().numpy())
+            # write_mat("./model_file", open_or_fd("./model_file/c_init.mat", "./model_file", "wb"), h_init.data.cpu().numpy())
+            # write_mat("./model_file", open_or_fd("./model_file/ufh.mat", "./model_file", "wb"), self.ufh[i].weight.data.cpu().numpy())
+            # write_mat("./model_file", open_or_fd("./model_file/uih.mat", "./model_file", "wb"), self.uih[i].weight.data.cpu().numpy())
+            # write_mat("./model_file", open_or_fd("./model_file/uoh.mat", "./model_file", "wb"), self.uoh[i].weight.data.cpu().numpy())
+            # write_mat("./model_file", open_or_fd("./model_file/uch.mat", "./model_file", "wb"), self.uch[i].weight.data.cpu().numpy())
+            # write_mat("./model_file", open_or_fd("./model_file/wfx.mat", "./model_file", "wb"), self.wfx[i].weight.data.cpu().numpy())
+            # write_mat("./model_file", open_or_fd("./model_file/wix.mat", "./model_file", "wb"), self.wix[i].weight.data.cpu().numpy())
+            # write_mat("./model_file", open_or_fd("./model_file/wox.mat", "./model_file", "wb"), self.wox[i].weight.data.cpu().numpy())
+            # write_mat("./model_file", open_or_fd("./model_file/wcx.mat", "./model_file", "wb"), self.wcx[i].weight.data.cpu().numpy())
             for k in range(x.shape[0]):
 
                 # LSTM equations
+                self.if_hsigmoid = 0
                 if self.if_hsigmoid:
                     ft = hsigmoid(wfx_out[k] + self.ufh[i](ht))
                     it = hsigmoid(wix_out[k] + self.uih[i](ht))
@@ -788,6 +879,8 @@ class LSTM(nn.Module):
 
             # Stacking hidden states
             h = torch.stack(hiddens)
+            # write_mat("./model_file", open_or_fd("./model_file/hiddens0.mat", "./model_file", "wb"), h.view(h.shape[0]*h.shape[1],h.shape[2]).data.cpu().numpy())
+
 
             # Bidirectional concatenations
             if self.bidir:
