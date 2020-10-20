@@ -1,3 +1,13 @@
+'''
+Description: 
+version: 
+Author: Wang Yanhong
+email: 284520535@qq.com
+Date: 2020-10-20 06:22:15
+LastEditors: Wang Yanhong
+LastEditTime: 2020-10-20 06:26:08
+'''
+
 import math
 import os
 import torch

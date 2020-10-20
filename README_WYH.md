@@ -12,8 +12,11 @@ git push origin master
 git branch -d wyh #删除本地分支
 #查看历史，回滚
 git log #查看分支历史
-
 ```
+
+# Pattern.py
+cfg文件配置
+
 
 
 
