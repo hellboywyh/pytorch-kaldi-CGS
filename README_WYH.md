@@ -3,7 +3,7 @@
 #切换分支，提交修改
 git branch -a #查看所有分支
 git checkout wyh
-git commit -a -m 'made a change'
+git commit -am 'made a change'
 git checkout master
 git merge wyh #合并分支wyh到master
 git add .
