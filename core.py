@@ -20,8 +20,6 @@ import threading
 from data_io import read_lab_fea, open_or_fd, write_mat
 from utils import shift
 
-from pattern_search import pattern_prun_model
-
 
 def run_nn(data_name, data_set, data_end_index, fea_dict, lab_dict, arch_dict, cfg_file, processed_first,
            next_config_file, if_prune=False, if_apply_ghcgs=False, if_pattern_search=False):
@@ -129,6 +127,7 @@ def run_nn(data_name, data_set, data_end_index, fea_dict, lab_dict, arch_dict, c
     # Pattern search, model modification and mask saving
     # pattern_prun_model(model, pattern_mode, pattern_shape, pattern_nnz, mask_save_dir, mask_name)
     if if_pattern_search:
+        from pattern_search import pattern_prun_model
         nns = pattern_prun_model(nns)
 
     # check automatically if the model is sequential
