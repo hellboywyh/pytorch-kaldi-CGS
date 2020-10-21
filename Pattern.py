@@ -4,8 +4,8 @@ version:
 Author: Wang Yanhong
 email: 284520535@qq.com
 Date: 2020-10-20 06:22:15
-LastEditors: Wang Yanhong
-LastEditTime: 2020-10-21 06:39:04
+LastEditors: Please set LastEditors
+LastEditTime: 2020-10-21 13:35:11
 '''
 
 import math
@@ -72,6 +72,7 @@ class Pattern(Module):
     def pattern_mask(self):
         self.pattern = self.get_pattern(self.pattern_nnz)
         assert self.dense_features.shape[0]%self.pattern_shape[0]==0, f'Error:{self.dense_features.shape[0]} can not be divisible by {self.pattern_shape[0]}'
+        assert self.dense_features.shape[1]%self.pattern_shape[1]==0, f'Error:{self.dense_features.shape[1]} can not be divisible by {self.pattern_shape[1]}'
         self.mask = np.zeros(self.dense_features.shape)
         row_block_num = self.dense_features.shape[0]//self.pattern_shape[0]
         col_block_num = self.dense_features.shape[1]//self.pattern_shape[1]
@@ -84,6 +85,7 @@ class Pattern(Module):
 
     def coo_mask(self):
         assert self.dense_features.shape[0]%self.pattern_shape[0]==0, f'Error:{self.dense_features.shape[0]} can not be divisible by {self.pattern_shape[0]}'
+        assert self.dense_features.shape[1]%self.pattern_shape[1]==0, f'Error:{self.dense_features.shape[1]} can not be divisible by {self.pattern_shape[1]}'
         self.mask = np.zeros(self.dense_features.shape)
         row_block_num = self.dense_features.shape[0]//self.pattern_shape[0]
         col_block_num = self.dense_features.shape[1]//self.pattern_shape[1]
@@ -100,16 +102,17 @@ class Pattern(Module):
 
     def pattern_coo_mask(self):
         assert self.dense_features.shape[0]%self.pattern_shape[0]==0, f'Error:{self.dense_features.shape[0]} can not be divisible by {self.pattern_shape[0]}'
+        assert self.dense_features.shape[1]%self.pattern_shape[1]==0, f'Error:{self.dense_features.shape[1]} can not be divisible by {self.pattern_shape[1]}'
         row_block_num = self.dense_features.shape[0]//self.pattern_shape[0]
         col_block_num = self.dense_features.shape[1]//self.pattern_shape[1]
         self.mask = np.zeros(self.dense_features.shape)
-        self.pat_nnz = int(self.pattern_nnz * self.dense_features.shape[0] * self.dense_features.shape[0] \
-                        /(64 + self.dense_features.shape[0] * self.dense_features.shape[0]))
+        self.pat_nnz = int(self.pattern_nnz * self.pattern_shape.shape[0] * self.pattern_shape.shape[0] \
+                        /(64 + self.pattern_shape.shape[0] * self.pattern_shape.shape[0]))
         self.coo_nnz = self.pattern_nnz - self.pat_nnz
         self.pattern = self.get_pattern(self.pat_nnz)
         for i in range(row_block_num):
             for j in range(col_block_num):
-                mask_block = self.pattern[np.random.choice(self.pattern_num,1)[0]]
+                mask_block = self.pattern[np.random.choice(self.pat_num,1)[0]]
                 dense_features_block = self.dense_features[i*self.pattern_shape[0]:(i+1)*self.pattern_shape[0],\
                                         j*self.pattern_shape[1]:(j+1)*self.pattern_shape[1]]
                 mask_block[np.argsort(np.multiply(dense_features_block, (np.ones_like(mask_block) - mask_block)))[-self.coo_nnz:]]=1
