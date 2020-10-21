@@ -175,7 +175,8 @@ for forward_data in forward_data_lst:
                                                     lab_dict, arch_dict,
                                                     config_chunk_file,
                                                     processed_first,
-                                                    next_config_file)
+                                                    next_config_file,
+                                                    if_pattern_search=False)
 
             # update the first_processed variable
             processed_first = False
