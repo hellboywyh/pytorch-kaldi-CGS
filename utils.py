@@ -1794,7 +1794,6 @@ def model_init(inp_out_dict, model, config, arch_dict, use_cuda, multi_gpu, to_d
 
             # addigng nn into the nns dict
             nns[arch_dict[inp1][1]] = net
-            print("nns", nns)
             if multi_gpu:
                 out_dim = net.module.out_dim
             else:
