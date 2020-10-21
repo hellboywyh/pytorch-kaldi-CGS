@@ -4,24 +4,26 @@ version:
 Author: Wang Yanhong
 email: 284520535@qq.com
 Date: 2020-10-20 06:22:02
-LastEditors: Wang Yanhong
-LastEditTime: 2020-10-20 06:26:24
+LastEditors: Please set LastEditors
+LastEditTime: 2020-10-21 04:43:56
 '''
 
 import numpy as np
 import os
+from sparsity import sparsity
 
 def pattern_prun_model(model):
     lstm_pattern=True
     mlp_pattern=True
     print(model)
-    for layers_name in model:
-        layers = model[layers_name]
-        print(layers)
-        if "LSTM" in layers_name and lstm_pattern == True:
-            print(layers["patx"][0].mask)
-        if "MLP" in layers_name and mlp_pattern == True:
-            print(layers["pat"][0].mask)
+    sparsity.find_pattern_model(model,[8,8])
+    # for layers_name in model:
+    #     layers = model[layers_name]
+    #     print(layers)
+    #     if "LSTM" in layers_name and lstm_pattern == True:
+    #         print(layers["patx"][0].mask)
+    #     if "MLP" in layers_name and mlp_pattern == True:
+    #         print(layers["pat"][0].mask)
     return model
 # def pattern_prun_model(model, pattern_mode, pattern_shape, pattern_nnz, mask_save_dir=False, mask_name=False):
 #     print(model)

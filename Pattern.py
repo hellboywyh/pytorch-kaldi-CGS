@@ -5,7 +5,7 @@ Author: Wang Yanhong
 email: 284520535@qq.com
 Date: 2020-10-20 06:22:15
 LastEditors: Wang Yanhong
-LastEditTime: 2020-10-21 03:35:01
+LastEditTime: 2020-10-21 06:39:04
 '''
 
 import math
@@ -49,7 +49,7 @@ class Pattern(Module):
         elif self.pattern_mode == 'coo':
             return self.coo_mask()
         elif self.pattern_mode == 'pattern_coo':
-            return self.pattern_mask()
+            return self.pattern_coo_mask()
         else:
             return(Parameter(torch.from_numpy(np.zeros(self.dense_features.shape)))) 
 
@@ -111,10 +111,10 @@ class Pattern(Module):
             for j in range(col_block_num):
                 mask_block = self.pattern[np.random.choice(self.pattern_num,1)[0]]
                 dense_features_block = self.dense_features[i*self.pattern_shape[0]:(i+1)*self.pattern_shape[0],\
-                                        j*self.pattern_shape[1]:(j+1)*self.pattern_shape[1]].flatten()
-                mask_block[np.argsort(dense_features_block * (np.ones_like(mask_block) - mask_block))[-self.coo_nnz:]]=1
+                                        j*self.pattern_shape[1]:(j+1)*self.pattern_shape[1]]
+                mask_block[np.argsort(np.multiply(dense_features_block, (np.ones_like(mask_block) - mask_block)))[-self.coo_nnz:]]=1
                 self.mask[i*self.pattern_shape[0]:(i+1)*self.pattern_shape[0],\
-                                        j*self.pattern_shape[1]:(j+1)*self.pattern_shape[1]] = mask_block.reshape(self.pattern_shape)
+                                        j*self.pattern_shape[1]:(j+1)*self.pattern_shape[1]] = mask_block
         return(Parameter(torch.from_numpy(self.mask)))
 
     def update(self, dense_features):
