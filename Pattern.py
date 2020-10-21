@@ -5,7 +5,7 @@ Author: Wang Yanhong
 email: 284520535@qq.com
 Date: 2020-10-20 06:22:15
 LastEditors: Wang Yanhong
-LastEditTime: 2020-10-21 03:31:12
+LastEditTime: 2020-10-21 03:35:01
 '''
 
 import math
@@ -104,7 +104,7 @@ class Pattern(Module):
         col_block_num = self.dense_features.shape[1]//self.pattern_shape[1]
         self.mask = np.zeros(self.dense_features.shape)
         self.pat_nnz = int(self.pattern_nnz * self.dense_features.shape[0] * self.dense_features.shape[0] \
-                        /(64 + self.dense_features.shape[0] * self.dense_features.shape[0])
+                        /(64 + self.dense_features.shape[0] * self.dense_features.shape[0]))
         self.coo_nnz = self.pattern_nnz - self.pat_nnz
         self.pattern = self.get_pattern(self.pat_nnz)
         for i in range(row_block_num):
