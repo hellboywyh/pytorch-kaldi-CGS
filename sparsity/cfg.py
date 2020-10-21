@@ -1,8 +1,15 @@
+'''
+Description: 
+version: 
+Author: Wang Yanhong
+email: 284520535@qq.com
+Date: 2020-10-21 07:20:07
+LastEditors: Wang Yanhong
+LastEditTime: 2020-10-21 07:20:41
+'''
 from sparsity import sparsity
 
 sparse_mode = 'pattern_pruning'
-
-user = "wyh"
 
 if sparse_mode == 'sparse_pruning':
     sparsity = args.sparsity
