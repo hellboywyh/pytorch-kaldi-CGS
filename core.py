@@ -24,7 +24,7 @@ from pattern_search import pattern_prun_model
 
 
 def run_nn(data_name, data_set, data_end_index, fea_dict, lab_dict, arch_dict, cfg_file, processed_first,
-           next_config_file, if_prune=False, if_apply_ghcgs=False):
+           next_config_file, if_prune=False, if_apply_ghcgs=False, if_pattern_search=False):
     # This function processes the current chunk using the information in cfg_file. In parallel, the next chunk is load into the CPU memory
 
     # Reading chunk-specific cfg file (first argument-mandatory file)
@@ -128,7 +128,8 @@ def run_nn(data_name, data_set, data_end_index, fea_dict, lab_dict, arch_dict, c
 
     # Pattern search, model modification and mask saving
     # pattern_prun_model(model, pattern_mode, pattern_shape, pattern_nnz, mask_save_dir, mask_name)
-    nns = pattern_prun_model(nns)
+    if if_pattern_search:
+        nns = pattern_prun_model(nns)
 
     # check automatically if the model is sequential
     seq_model = is_sequential_dict(config, arch_dict)

@@ -106,16 +106,20 @@ class MLP(nn.Module):
         self.guided_hcgs = strtobool(options['guided_hcgs'])
         self.apply_guided_hcgs = strtobool(options['apply_guided_hcgs'])
 
-        self.mlp_pattern = strtobool(options['mlp_pattern'])
-        # self.sparse_mode = options['sparse_mode']
-        self.pattern_mode = options['pattern_mode']
-        self.pattern_shape = list(map(int, options['pattern_shape'].split(',')))
-        self.pattern_nnz = list(map(int, options['pattern_nnz'].split(',')))
-        self.pattern_num = list(map(int, options['pattern_num'].split(',')))
+        if 'mlp_pattern' in options:
+            self.mlp_pattern = strtobool(options['mlp_pattern'])
+            # self.sparse_mode = options['sparse_mode']
+            self.pattern_mode = options['pattern_mode']
+            self.pattern_shape = list(map(int, options['pattern_shape'].split(',')))
+            self.pattern_nnz = list(map(int, options['pattern_nnz'].split(',')))
+            self.pattern_num = list(map(int, options['pattern_num'].split(',')))
+        else:
+            self.mlp_pattern = False
 
-        self.pattern_from_file = False
         if "pattern_from_file" in options.keys():
             self.pattern_from_file = options['pattern_from_file']
+        else:
+            self.pattern_from_file = False
 
         self.arch_name = options['arch_name']
 
@@ -441,17 +445,21 @@ class LSTM(nn.Module):
         self.apply_guided_hcgs = strtobool(options['apply_guided_hcgs'])
 
         self.if_hsigmoid = strtobool(options['if_hsigmoid'])
-
-        self.lstm_pattern = strtobool(options['lstm_pattern'])
-        # self.sparse_mode = options['sparse_mode']
-        self.pattern_mode = options['pattern_mode']
-        self.pattern_shape = list(map(int, options['pattern_shape'].split(',')))
-        self.pattern_nnz = list(map(int, options['pattern_nnz'].split(',')))
-        self.pattern_num = list(map(int, options['pattern_num'].split(',')))
-
-        self.pattern_from_file = False
+        
+        if 'lstm_pattern' in options:
+            self.lstm_pattern = strtobool(options['lstm_pattern'])
+            # self.sparse_mode = options['sparse_mode']
+            self.pattern_mode = options['pattern_mode']
+            self.pattern_shape = list(map(int, options['pattern_shape'].split(',')))
+            self.pattern_nnz = list(map(int, options['pattern_nnz'].split(',')))
+            self.pattern_num = list(map(int, options['pattern_num'].split(',')))
+        else:
+            self.lstm_pattern = False
+        
         if "pattern_from_file" in options.keys():
             self.pattern_from_file = options['pattern_from_file']
+        else:
+            self.pattern_from_file = False
         
         self.arch_name = options['arch_name']
 
