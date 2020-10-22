@@ -1,3 +1,11 @@
+<!--
+ * @Author: your name
+ * @Date: 2020-10-21 13:55:29
+ * @LastEditTime: 2020-10-21 13:56:04
+ * @LastEditors: your name
+ * @Description: In User Settings Edit
+ * @FilePath: /2-pytorch-kaldi-cgs/README_WYH.md
+-->
 # Git
 ```python
 #切换分支，提交修改
@@ -17,7 +25,10 @@ git log #查看分支历史
 # Pattern.py
 cfg文件配置
 
-
+# 处理本地冲突
+git stash
+git pull
+git stash pop
 
 
 

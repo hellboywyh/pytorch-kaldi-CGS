@@ -4,8 +4,8 @@ version:
 Author: Wang Yanhong
 email: 284520535@qq.com
 Date: 2020-10-20 06:22:15
-LastEditors: Please set LastEditors
-LastEditTime: 2020-10-21 13:35:11
+LastEditors: Wang Yanhong
+LastEditTime: 2020-10-22 09:21:57
 '''
 
 import math
@@ -94,8 +94,7 @@ class Pattern(Module):
                 dense_features_block = self.dense_features[i*self.pattern_shape[0]:(i+1)*self.pattern_shape[0],\
                                         j*self.pattern_shape[1]:(j+1)*self.pattern_shape[1]].flatten()
                 mask_block = np.zeros(dense_features_block.shape)
-                # mask_block[np.argsort(dense_features_block)[:self.pattern_nnz]] = 1
-                mask_block[np.argsort(dense_features_block)[-self.pattern_nnz:]] = 1
+                mask_block[np.argsort(np.abs(dense_features_block))[-self.pattern_nnz:]] = 1
                 self.mask[i*self.pattern_shape[0]:(i+1)*self.pattern_shape[0],\
                                         j*self.pattern_shape[1]:(j+1)*self.pattern_shape[1]] = mask_block.reshape(self.pattern_shape)
         return(Parameter(torch.from_numpy(self.mask)))
@@ -106,16 +105,16 @@ class Pattern(Module):
         row_block_num = self.dense_features.shape[0]//self.pattern_shape[0]
         col_block_num = self.dense_features.shape[1]//self.pattern_shape[1]
         self.mask = np.zeros(self.dense_features.shape)
-        self.pat_nnz = int(self.pattern_nnz * self.pattern_shape.shape[0] * self.pattern_shape.shape[0] \
-                        /(64 + self.pattern_shape.shape[0] * self.pattern_shape.shape[0]))
+        self.pat_nnz = int(self.pattern_nnz * self.pattern_shape[0] * self.pattern_shape[1] \
+                        /(64 + self.pattern_shape[0] * self.pattern_shape[1]))
         self.coo_nnz = self.pattern_nnz - self.pat_nnz
         self.pattern = self.get_pattern(self.pat_nnz)
         for i in range(row_block_num):
             for j in range(col_block_num):
-                mask_block = self.pattern[np.random.choice(self.pat_num,1)[0]]
+                mask_block = self.pattern[np.random.choice(self.pattern_num,1)[0]]
                 dense_features_block = self.dense_features[i*self.pattern_shape[0]:(i+1)*self.pattern_shape[0],\
                                         j*self.pattern_shape[1]:(j+1)*self.pattern_shape[1]]
-                mask_block[np.argsort(np.multiply(dense_features_block, (np.ones_like(mask_block) - mask_block)))[-self.coo_nnz:]]=1
+                mask_block[np.argsort(np.abs(np.array(dense_features_block)*(np.ones_like(mask_block) - mask_block)))[-self.coo_nnz:]]=1
                 self.mask[i*self.pattern_shape[0]:(i+1)*self.pattern_shape[0],\
                                         j*self.pattern_shape[1]:(j+1)*self.pattern_shape[1]] = mask_block
         return(Parameter(torch.from_numpy(self.mask)))

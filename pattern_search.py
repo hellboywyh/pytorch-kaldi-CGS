@@ -5,18 +5,20 @@ Author: Wang Yanhong
 email: 284520535@qq.com
 Date: 2020-10-20 06:22:02
 LastEditors: Please set LastEditors
-LastEditTime: 2020-10-21 04:43:56
+LastEditTime: 2020-10-22 05:49:35
 '''
 
 import numpy as np
 import os
 from sparsity import sparsity
 
-def pattern_prun_model(model):
+def pattern_prun_model(models):
     lstm_pattern=True
     mlp_pattern=True
-    print(model)
-    sparsity.find_pattern_model(model,[8,8])
+    print(models)
+    for layers_name in models:
+        models[layers_name] = sparsity.find_pattern_certain_nnz_model(models[layers_name],16,[8,8],4, if_pattern_prun=True)
+    
     # for layers_name in model:
     #     layers = model[layers_name]
     #     print(layers)
