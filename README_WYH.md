@@ -1,8 +1,8 @@
 <!--
  * @Author: your name
  * @Date: 2020-10-21 13:55:29
- * @LastEditTime: 2020-10-21 13:56:04
- * @LastEditors: your name
+ * @LastEditTime: 2020-10-23 02:16:00
+ * @LastEditors: Wang Yanhong
  * @Description: In User Settings Edit
  * @FilePath: /2-pytorch-kaldi-cgs/README_WYH.md
 -->
@@ -24,7 +24,7 @@ git log #查看分支历史
 
 # Pattern.py
 cfg文件配置
-
+ssh-keygen -t rsa -C
 # 处理本地冲突
 git stash
 git pull

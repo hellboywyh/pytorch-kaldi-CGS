@@ -318,10 +318,10 @@ def find_pattern_certain_nnz_model(model, pattern_num, pattern_shape, pattern_nn
     all_cnt = 0
     for i, name in enumerate(name_list):
         raw_w = para_list[i]
-        raw_w, patterns_layer = find_pattern_certain_nnz_layer(raw_w, pattern_num, pattern_shape, pattern_nnz)
+        raw_w, patterns_layer = find_pattern_certain_nnz_layer(raw_w, pattern_num, pattern_shape, pattern_nnz, if_pattern_prun)
         patterns = add_dict(patterns, patterns_layer)
         if if_pattern_prun:
-            a[name] = raw_w
+            a[name] = raw_w.squeeze(2)
     model.load_state_dict(a)
 
     return model, patterns
@@ -330,43 +330,46 @@ def find_pattern_certain_nnz_layer(raw_w, pattern_num, pattern_shape, pattern_nn
     patterns = dict()
     if raw_w.dim() == 2:
         raw_w = raw_w.unsqueeze(2)
+    if not raw_w.size(0) % pattern_shape[0] == 0 or not raw_w.size(1) % pattern_shape[1] == 0:
+        f"Error shape{raw_w.shape()}"
+    mask = torch.ones_like(raw_w)
     for k in range(raw_w.size(2)):
-        for ic_p in range(raw_w.size(0)/ pattern_shape[0]):
-            for oc_p in range(raw_w.size(1) / pattern_shape[1]):
+        for ic_p in range(raw_w.size(0)// pattern_shape[0]):
+            for oc_p in range(raw_w.size(1) // pattern_shape[1]):
                 part_w = raw_w[ic_p * pattern_shape[0]:(ic_p+1) * pattern_shape[0],
                             oc_p * pattern_shape[1]:(oc_p+1) * pattern_shape[1], k]
                 value, _ = torch.topk(part_w.abs().flatten(), pattern_nnz)
 
                 # pruning
                 thre = abs(value[-1])
+                one = torch.ones_like(part_w)
                 zero = torch.zeros_like(part_w)
-                part_w_p = torch.where(abs(part_w) < thre, zero, part_w)
+                mask_p = torch.where(abs(part_w) < thre, zero, one)
 
-                # 需要按照排序过的pattern进行pruning
-                # raw_w[k, ic_p * pattern_shape[0]:(ic_p+1) * pattern_shape[0],
-                #             oc_p * pattern_shape[1]:(oc_p+1) * pattern_shape[1]] = part_w_p
+                mask[ic_p * pattern_shape[0]:(ic_p+1) * pattern_shape[0],
+                            oc_p * pattern_shape[1]:(oc_p+1) * pattern_shape[1], k] = mask_p
 
                 # save the pattern
-                patterns = find_pattern_layer(raw_w, pattern_shape)
-                if if_pattern_prun:
-                    sorted_patterns = sorted(patterns.items(),key=lambda item:item[1])
-                    selected_pattern_list = sorted_patterns.keys()[-pattern_num:]
-                    raw_w = pattern_prun_certain_nnz_layer(raw_w, selected_pattern_list)
-
+    patterns = find_pattern_layer(mask, pattern_shape)
+    if if_pattern_prun:
+        sorted_patterns = sorted(patterns.keys(),key=lambda item:patterns[item],reverse=True)
+        selected_pattern_list = sorted_patterns[:pattern_num]
+        raw_w = pattern_prun_certain_nnz_layer(raw_w, selected_pattern_list, pattern_shape)
     return raw_w, patterns
+    
 
-def pattern_prun_certain_nnz_layer(raw_w, selected_pattern_list):
+def pattern_prun_certain_nnz_layer(raw_w, selected_pattern_list, pattern_shape):
     if raw_w.dim() == 2:
         raw_w = raw_w.unsqueeze(2)
-
-    for k in raw_w.size(2):
-        for ic_p in raw_w.size(0)/ pattern_shape[0]:
-            for oc_p in raw_w.size(1) / pattern_shape[1]:
+    selected_pattern_list = [torch.from_numpy(np.fromstring(selected_pattern_list[i],dtype=np.float32)).cuda().reshape(pattern_shape) for i in range(len(selected_pattern_list))]
+    for k in range(raw_w.size(2)):
+        for ic_p in range(raw_w.size(0)// pattern_shape[0]):
+            for oc_p in range(raw_w.size(1) // pattern_shape[1]):
                 part_w = raw_w[ic_p * pattern_shape[0]:(ic_p+1) * pattern_shape[0],
                             oc_p * pattern_shape[1]:(oc_p+1) * pattern_shape[1], k].abs()
-                pattern_index = max(range(len(selected_pattern_list)),key=lambda i:selected_pattern_list[i].mul(part_w))
-                raw_w[k, ic_p * pattern_shape[0]:(ic_p+1) * pattern_shape[0],
-                            oc_p * pattern_shape[1]:(oc_p+1) * pattern_shape[1]] = selected_pattern_list[pattern_index]
+                pattern_index = max(range(len(selected_pattern_list)),key=lambda i:torch.sum(selected_pattern_list[i]*(part_w)))
+                raw_w[ic_p * pattern_shape[0]:(ic_p+1) * pattern_shape[0],
+                            oc_p * pattern_shape[1]:(oc_p+1) * pattern_shape[1], k] = selected_pattern_list[pattern_index]
     return raw_w
 
 
