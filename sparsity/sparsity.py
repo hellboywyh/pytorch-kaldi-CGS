@@ -312,7 +312,6 @@ def find_pattern_certain_nnz_model(model, pattern_num, pattern_shape, pattern_nn
             name_list.append(name)
             para_list.append(para)
             print(name, para.size())
-
     a = model.state_dict()
     zero_cnt = 0
     all_cnt = 0
@@ -322,8 +321,8 @@ def find_pattern_certain_nnz_model(model, pattern_num, pattern_shape, pattern_nn
         patterns = add_dict(patterns, patterns_layer)
         if if_pattern_prun:
             a[name] = raw_w.squeeze(2)
+    
     model.load_state_dict(a)
-
     return model, patterns
 
 def find_pattern_certain_nnz_layer(raw_w, pattern_num, pattern_shape, pattern_nnz, if_pattern_prun=False):

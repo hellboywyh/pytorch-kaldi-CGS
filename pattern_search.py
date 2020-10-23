@@ -5,7 +5,7 @@ Author: Wang Yanhong
 email: 284520535@qq.com
 Date: 2020-10-20 06:22:02
 LastEditors: Wang Yanhong
-LastEditTime: 2020-10-23 06:26:56
+LastEditTime: 2020-10-23 10:37:00
 '''
 
 import numpy as np
@@ -17,9 +17,7 @@ def pattern_prun_model(models):
     mlp_pattern=True
     print(models)
     for layers_name in models:
-        models[layers_name] = sparsity.find_pattern_certain_nnz_model(models[layers_name],16,[8,8],4, if_pattern_prun=True)
-    
-    print(models)
+        models[layers_name],_ = sparsity.find_pattern_certain_nnz_model(models[layers_name],16,[8,8],4, if_pattern_prun=True)
     return models
 # def pattern_prun_model(model, pattern_mode, pattern_shape, pattern_nnz, mask_save_dir=False, mask_name=False):
 #     print(model)
