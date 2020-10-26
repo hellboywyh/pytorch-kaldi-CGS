@@ -15,18 +15,14 @@ import glob
 import configparser
 # import ConfigParser as configparser
 import numpy as np
-import torch
 from utils import check_cfg, create_lists, create_configs, compute_avg_performance, \
     read_args_command_line, run_shell, compute_n_chunks, get_all_archs, cfg_item2sec, \
-    dump_epoch_results, create_curves, change_lr_cfg, expand_str_ep, model_init, optimizer_init
+    dump_epoch_results, create_curves, change_lr_cfg, expand_str_ep
 from shutil import copyfile
 import re
 from distutils.util import strtobool
 import importlib
 import math
-import threading
-from data_io import read_lab_fea, open_or_fd, write_mat
-from pattern_search import pattern_prun_model
 
 # Reading global cfg file (first argument-mandatory file)
 cfg_file = sys.argv[1]
@@ -139,84 +135,185 @@ fea_dict = []
 lab_dict = []
 arch_dict = []
 
-# --------Pruning model and save pruned model--------#
+# --------TRAINING LOOP--------#
+for ep in range(N_ep):
 
-# Reading all the features and labels for this chunk
-ep = N_ep - 1
-ck = 0
-N_ck_forward = compute_n_chunks(out_folder, forward_data_lst[0], ep, N_ep_str_format, 'forward')
-N_ck_str_format = '0' + str(int(max(math.ceil(np.log10(N_ck_forward)), 1))) + 'd'
-config_chunk_file = out_folder + '/exp_files/forward_' + forward_data_lst[0] + '_ep' + format(ep, N_ep_str_format)\
-                    + '_ck' + format(ck, N_ck_str_format) + '.cfg'
-shared_list = []
-test_config = configparser.ConfigParser()
-test_cfg_file = config_chunk_file
-test_config.read(test_cfg_file)
-output_folder = test_config['exp']['out_folder']
-is_production = strtobool(test_config['exp']['production'])
-model = test_config['model']['model'].split('\n')
-use_cuda = strtobool(test_config['exp']['use_cuda'])
-multi_gpu = strtobool(test_config['exp']['multi_gpu'])
-to_do = test_config['exp']['to_do']
-info_file = test_config['exp']['out_info']
+    tr_loss_tot = 0
+    tr_error_tot = 0
+    tr_time_tot = 0
 
-p = threading.Thread(target=read_lab_fea, args=(test_cfg_file, is_production, shared_list, output_folder,))
-p.start()
-p.join()
+    print('------------------------------ Epoch %s / %s ------------------------------' % (
+    format(ep, N_ep_str_format), format(N_ep - 1, N_ep_str_format)))
 
-data_name = shared_list[0]
-data_end_index = shared_list[1]
-fea_dict = shared_list[2]
-lab_dict = shared_list[3]
-arch_dict = shared_list[4]
-data_set = shared_list[5]
+    for tr_data in tr_data_lst:
 
-[nns, costs] = model_init(fea_dict, model, test_config, arch_dict, use_cuda, multi_gpu, to_do)
-# optimizers initialization
-optimizers = optimizer_init(nns, test_config, arch_dict)
+        # Compute the total number of chunks for each training epoch
+        N_ck_tr = compute_n_chunks(out_folder, tr_data, ep, N_ep_str_format, 'train')
+        N_ck_str_format = '0' + str(int(max(math.ceil(np.log10(N_ck_tr)), 1))) + 'd'
 
-# load pre-training model
-for net in nns.keys():
-    pt_file_arch = config[arch_dict[net][0]]['arch_pretrain_file']
+        # ***Epoch training***
+        for ck in range(N_ck_tr):
 
-    if pt_file_arch != 'none':
-        checkpoint_load = torch.load(pt_file_arch)
-        nns[net].load_state_dict(checkpoint_load['model_par'])
-        optimizers[net].load_state_dict(checkpoint_load['optimizer_par'])
-        optimizers[net].param_groups[0]['lr'] = float(
-            test_config[arch_dict[net][0]]['arch_lr'])  # loading lr of the cfg file for pt
+            # paths of the output files (info,model,chunk_specific cfg file)
+            info_file = out_folder + '/exp_files/train_' + tr_data + '_ep' + format(ep,
+                                                                                    N_ep_str_format) + '_ck' + format(
+                ck, N_ck_str_format) + '.info'
 
-# pattern prun model
-pattern_num = int(config['pattern']['pattern_num'])
-pattern_shape = list(map(int, config['pattern']['pattern_shape'].split(',')))
-pattern_nnz = int(config['pattern']['pattern_nnz'])
-nns = pattern_prun_model(nns, pattern_num, pattern_shape, pattern_nnz, if_pattern_prun=True)
+            if ep + ck == 0:
+                model_files_past = {}
+            else:
+                model_files_past = model_files
 
+            model_files = {}
+            for arch in pt_files.keys():
+                model_files[arch] = info_file.replace('.info', '_' + arch + '.pkl')
 
-# save pattern pruned model
-for net in nns.keys():
-    checkpoint = {}
-    checkpoint['model_par'] = nns[net].state_dict()
-    checkpoint['optimizer_par'] = optimizers[net].state_dict()
+            config_chunk_file = out_folder + '/exp_files/train_' + tr_data + '_ep' + format(ep,
+                                                                                            N_ep_str_format) + '_ck' + format(
+                ck, N_ck_str_format) + '.cfg'
 
-    out_file = info_file.replace('.info', f'_{arch_dict[net][0]}_{pattern_num}_{pattern_shape[0]}x{pattern_shape[1]}_{pattern_nnz}_pattern.pkl')
-    torch.save(checkpoint, out_file)
+            # update learning rate in the cfg file (if needed)
+            change_lr_cfg(config_chunk_file, lr, ep)
 
-# modify pre_trained model in test cfg
-for ck in range(N_ck_forward):
-    config_chunk_file = out_folder + '/exp_files/forward_' + forward_data_lst[0] + '_ep' + format(ep,N_ep_str_format) + '_ck' + format(ck, N_ck_str_format) + '.cfg'
-    config_chunk = configparser.ConfigParser()
-    config_chunk.read(config_chunk_file)
-    for arch in arch_lst:
-        config_chunk[arch]["arch_pretrain_file"] = info_file.replace('.info', f'_{arch}_{pattern_num}_{pattern_shape[0]}x{pattern_shape[1]}_{pattern_nnz}_pattern.pkl')
-    # Write cfg_file_chunk
-    with open(config_chunk_file, 'w') as configfile:
-        config_chunk.write(configfile)
+            # if this chunk has not already been processed, do training...
+            if not (os.path.exists(info_file)):
 
+                print('Training %s chunk = %i / %i' % (tr_data, ck + 1, N_ck_tr))
 
+                # getting the next chunk
+                next_config_file = cfg_file_list[op_counter]
+
+                # checking whether to prune or not
+                if (ck + 1) == N_ck_tr and (ep + 1) >= apply_prune_ep:
+                    if_prune = True
+                else:
+                    if_prune = False
+
+                # run chunk processing
+                [data_name, data_set, data_end_index, fea_dict, lab_dict, arch_dict] = run_nn(data_name, data_set,
+                                                                                              data_end_index, fea_dict,
+                                                                                              lab_dict, arch_dict,
+                                                                                              config_chunk_file,
+                                                                                              processed_first,
+                                                                                              next_config_file, if_prune)
+
+                # update the first_processed variable
+                processed_first = False
+
+                if not (os.path.exists(info_file)):
+                    sys.stderr.write(
+                        "ERROR: training epoch %i, chunk %i not done! File %s does not exist.\nSee %s \n" % (
+                        ep, ck, info_file, log_file))
+                    sys.exit(0)
+
+            # update the operation counter
+            op_counter += 1
+
+            # update pt_file (used to initialized the DNN for the next chunk)
+            for pt_arch in pt_files.keys():
+                pt_files[pt_arch] = out_folder + '/exp_files/train_' + tr_data + '_ep' + format(ep,
+                                                                                                N_ep_str_format) + '_ck' + format(
+                    ck, N_ck_str_format) + '_' + pt_arch + '.pkl'
+
+            # remove previous pkl files
+            if len(model_files_past.keys()) > 0:
+                for pt_arch in pt_files.keys():
+                    if os.path.exists(model_files_past[pt_arch]):
+                        os.remove(model_files_past[pt_arch])
+
+                        # Training Loss and Error
+        tr_info_lst = sorted(
+            glob.glob(out_folder + '/exp_files/train_' + tr_data + '_ep' + format(ep, N_ep_str_format) + '*.info'))
+        [tr_loss, tr_error, tr_time] = compute_avg_performance(tr_info_lst)
+
+        tr_loss_tot = tr_loss_tot + tr_loss
+        tr_error_tot = tr_error_tot + tr_error
+        tr_time_tot = tr_time_tot + tr_time
+
+        # ***Epoch validation***
+        if ep > 0:
+            # store previous-epoch results (useful for learnig rate anealling)
+            valid_peformance_dict_prev = valid_peformance_dict
+
+        valid_peformance_dict = {}
+        tot_time = tr_time
+
+    for valid_data in valid_data_lst:
+
+        # Compute the number of chunks for each validation dataset
+        N_ck_valid = compute_n_chunks(out_folder, valid_data, ep, N_ep_str_format, 'valid')
+        N_ck_str_format = '0' + str(int(max(math.ceil(np.log10(N_ck_valid)), 1))) + 'd'
+
+        for ck in range(N_ck_valid):
+
+            # paths of the output files
+            info_file = out_folder + '/exp_files/valid_' + valid_data + '_ep' + format(ep,
+                                                                                       N_ep_str_format) + '_ck' + format(
+                ck, N_ck_str_format) + '.info'
+            config_chunk_file = out_folder + '/exp_files/valid_' + valid_data + '_ep' + format(ep,
+                                                                                               N_ep_str_format) + '_ck' + format(
+                ck, N_ck_str_format) + '.cfg'
+
+            # Do validation if the chunk was not already processed
+            if not (os.path.exists(info_file)):
+                print('Validating %s chunk = %i / %i' % (valid_data, ck + 1, N_ck_valid))
+
+                # Doing eval
+
+                # getting the next chunk
+                next_config_file = cfg_file_list[op_counter]
+
+                # run chunk processing
+                [data_name, data_set, data_end_index, fea_dict, lab_dict, arch_dict] = run_nn(data_name, data_set,
+                                                                                              data_end_index, fea_dict,
+                                                                                              lab_dict, arch_dict,
+                                                                                              config_chunk_file,
+                                                                                              processed_first,
+                                                                                              next_config_file)
+
+                # update the first_processed variable
+                processed_first = False
+
+                if not (os.path.exists(info_file)):
+                    sys.stderr.write(
+                        "ERROR: validation on epoch %i, chunk %i of dataset %s not done! File %s does not exist.\nSee %s \n" % (
+                        ep, ck, valid_data, info_file, log_file))
+                    sys.exit(0)
+
+            # update the operation counter
+            op_counter += 1
+
+        # Compute validation performance
+        valid_info_lst = sorted(
+            glob.glob(out_folder + '/exp_files/valid_' + valid_data + '_ep' + format(ep, N_ep_str_format) + '*.info'))
+        [valid_loss, valid_error, valid_time] = compute_avg_performance(valid_info_lst)
+        valid_peformance_dict[valid_data] = [valid_loss, valid_error, valid_time]
+        tot_time = tot_time + valid_time
+
+    # Print results in both res_file and stdout
+    dump_epoch_results(res_file_path, ep, tr_data_lst, tr_loss_tot, tr_error_tot, tot_time, valid_data_lst,
+                       valid_peformance_dict, lr, N_ep)
+
+    # Check for learning rate annealing
+    if ep > 0:
+        # computing average validation error (on all the dataset specified)
+        err_valid_mean = np.mean(np.asarray(list(valid_peformance_dict.values()))[:, 1])
+        err_valid_mean_prev = np.mean(np.asarray(list(valid_peformance_dict_prev.values()))[:, 1])
+
+        for lr_arch in lr.keys():
+            # If an external lr schedule is not set, use newbob learning rate anealing
+            if ep < N_ep - 1 and auto_lr_annealing[lr_arch]:
+                if ((err_valid_mean_prev - err_valid_mean) / err_valid_mean) < improvement_threshold[lr_arch]:
+                    new_lr_value = float(lr[lr_arch][ep]) * halving_factor[lr_arch]
+                    for i in range(ep + 1, N_ep):
+                        lr[lr_arch][i] = str(new_lr_value)
+
+# Training has ended, copy the last .pkl to final_arch.pkl for production
+for pt_arch in pt_files.keys():
+    if os.path.exists(model_files[pt_arch]) and not os.path.exists(out_folder + '/exp_files/final_' + pt_arch + '.pkl'):
+        copyfile(model_files[pt_arch], out_folder + '/exp_files/final_' + pt_arch + '.pkl')
 
 # --------FORWARD--------#
-ep = N_ep - 1
 for forward_data in forward_data_lst:
 
     # Compute the number of chunks
@@ -239,28 +336,23 @@ for forward_data in forward_data_lst:
             ck, N_ck_str_format) + '.cfg'
 
         # Do forward if the chunk was not already processed
-        # if not (os.path.exists(info_file)):
-        if True:
+        if not (os.path.exists(info_file)):
+
             # Doing forward
 
             # getting the next chunk
             next_config_file = cfg_file_list[op_counter]
 
-            
-
             # run chunk processing
-            [data_name, data_set, data_end_index, \
-            fea_dict, lab_dict, arch_dict] = run_nn(data_name, data_set,
-                                                    data_end_index, fea_dict,
-                                                    lab_dict, arch_dict,
-                                                    config_chunk_file,
-                                                    processed_first,
-                                                    next_config_file,
-                                                    if_pattern_search=False)
+            [data_name, data_set, data_end_index, fea_dict, lab_dict, arch_dict] = run_nn(data_name, data_set,
+                                                                                          data_end_index, fea_dict,
+                                                                                          lab_dict, arch_dict,
+                                                                                          config_chunk_file,
+                                                                                          processed_first,
+                                                                                          next_config_file)
 
             # update the first_processed variable
             processed_first = False
-            
 
             if not (os.path.exists(info_file)):
                 sys.stderr.write(
@@ -348,6 +440,10 @@ for data in forward_data_lst:
             res_file = open(res_file_path, "a")
             res_file.write('%s\n' % wers)
             print(wers)
+
+# Saving Loss and Err as .txt and plotting curves
+if not is_production:
+    create_curves(out_folder, N_ep, valid_data_lst)
 
 
 
