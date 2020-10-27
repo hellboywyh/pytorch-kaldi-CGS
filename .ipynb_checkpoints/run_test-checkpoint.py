@@ -187,20 +187,21 @@ for net in nns.keys():
             test_config[arch_dict[net][0]]['arch_lr'])  # loading lr of the cfg file for pt
 
 # pattern prun model
+if_pattern_prun = strtobool(config['pattern']['pattern_prun'])
 pattern_num = int(config['pattern']['pattern_num'])
 pattern_shape = list(map(int, config['pattern']['pattern_shape'].split(',')))
 pattern_nnz = int(config['pattern']['pattern_nnz'])
-nns = pattern_prun_model(nns, pattern_num, pattern_shape, pattern_nnz, if_pattern_prun=True)
 
+if if_pattern_prun:
+    nns = pattern_prun_model(nns, pattern_num, pattern_shape, pattern_nnz, if_pattern_prun=True)
+    # save pattern pruned model
+    for net in nns.keys():
+        checkpoint = {}
+        checkpoint['model_par'] = nns[net].state_dict()
+        checkpoint['optimizer_par'] = optimizers[net].state_dict()
 
-# save pattern pruned model
-for net in nns.keys():
-    checkpoint = {}
-    checkpoint['model_par'] = nns[net].state_dict()
-    checkpoint['optimizer_par'] = optimizers[net].state_dict()
-
-    out_file = info_file.replace('.info', f'_{arch_dict[net][0]}_{pattern_num}_{pattern_shape[0]}x{pattern_shape[1]}_{pattern_nnz}_pattern.pkl')
-    torch.save(checkpoint, out_file)
+        out_file = info_file.replace('.info', f'_{arch_dict[net][0]}_{pattern_num}_{pattern_shape[0]}x{pattern_shape[1]}_{pattern_nnz}_pattern.pkl')
+        torch.save(checkpoint, out_file)
 
 # modify pre_trained model in test cfg
 for ck in range(N_ck_forward):

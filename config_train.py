@@ -4,8 +4,8 @@ version:
 Author: Wang Yanhong
 email: 284520535@qq.com
 Date: 2020-10-21 07:20:07
-LastEditors: Please set LastEditors
-LastEditTime: 2020-10-22 01:16:11
+LastEditors: Wang Yanhong
+LastEditTime: 2020-10-26 23:40:35
 '''
 
 from sparsity import sparsity
@@ -13,7 +13,7 @@ sparse_mode   = 'pattern_pruning'
 pattern_num   = 16
 pattern_shape = [8, 8]
 pattern_nnz   = 4
-print(f'{sparse_mode} {pattern_num} [{pattern_shape[0]}, {pattern_shape[1]}] {pattern_nnz}')
+# print(f'{sparse_mode} {pattern_num} [{pattern_shape[0]}, {pattern_shape[1]}] {pattern_nnz}')
 
 
 # if sparse_mode == 'sparse_pruning':

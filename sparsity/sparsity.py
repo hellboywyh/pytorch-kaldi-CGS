@@ -78,7 +78,7 @@ def pruning(model, sparse_mode='dense'):
             
         model.load_state_dict(a)
 
-    elif sparse_mode == 'pattern_pruning':
+    elif sparse_mode == '':
         name_list = list()
         para_list = list()
 
