@@ -1,5 +1,5 @@
 ##########################################################
-# pytorch-kaldi v.0.1                                      
+# pytorch-kaldi v.0.1
 # Mirco Ravanelli, Titouan Parcollet
 # Mila, University of Montreal
 # October 2018
@@ -27,14 +27,16 @@ import math
 # Reading global cfg file (first argument-mandatory file)
 cfg_file = sys.argv[1]
 if not (os.path.exists(cfg_file)):
-    sys.stderr.write('ERROR: The config file %s does not exist!\n' % (cfg_file))
+    sys.stderr.write(
+        'ERROR: The config file %s does not exist!\n' % (cfg_file))
     sys.exit(0)
 else:
     config = configparser.ConfigParser()
     config.read(cfg_file)
 
 # Reading and parsing optional arguments from command line (e.g.,--optimization,lr=0.002)
-[section_args, field_args, value_args] = read_args_command_line(sys.argv, config)
+[section_args, field_args, value_args] = read_args_command_line(
+    sys.argv, config)
 
 # Output folder creation
 out_folder = config['exp']['out_folder']
@@ -59,7 +61,8 @@ tr_data_lst = config['data_use']['train_with'].split(',')
 valid_data_lst = config['data_use']['valid_with'].split(',')
 forward_data_lst = config['data_use']['forward_with'].split(',')
 max_seq_length_train = config['batches']['max_seq_length_train']
-forward_save_files = list(map(strtobool, config['forward']['save_out_file'].split(',')))
+forward_save_files = list(
+    map(strtobool, config['forward']['save_out_file'].split(',')))
 
 if config.has_option('exp', 'apply_prune_ep'):
     apply_prune_ep = int(config.get('exp', 'apply_prune_ep'))
@@ -106,7 +109,8 @@ for arch in arch_lst:
         auto_lr_annealing[arch] = False
     else:
         auto_lr_annealing[arch] = True
-    improvement_threshold[arch] = float(config[arch]['arch_improvement_threshold'])
+    improvement_threshold[arch] = float(
+        config[arch]['arch_improvement_threshold'])
     halving_factor[arch] = float(config[arch]['arch_halving_factor'])
     pt_files[arch] = config[arch]['arch_pretrain_file']
 
@@ -122,7 +126,8 @@ if is_production:
 op_counter = 1  # used to dected the next configuration file from the list_chunks.txt
 
 # Reading the ordered list of config file to process
-cfg_file_list = [line.rstrip('\n') for line in open(out_folder + '/exp_files/list_chunks.txt')]
+cfg_file_list = [line.rstrip('\n') for line in open(
+    out_folder + '/exp_files/list_chunks.txt')]
 cfg_file_list.append(cfg_file_list[-1])
 
 # A variable that tells if the current chunk is the first one that is being processed:
@@ -143,13 +148,15 @@ for ep in range(N_ep):
     tr_time_tot = 0
 
     print('------------------------------ Epoch %s / %s ------------------------------' % (
-    format(ep, N_ep_str_format), format(N_ep - 1, N_ep_str_format)))
+        format(ep, N_ep_str_format), format(N_ep - 1, N_ep_str_format)))
 
     for tr_data in tr_data_lst:
 
         # Compute the total number of chunks for each training epoch
-        N_ck_tr = compute_n_chunks(out_folder, tr_data, ep, N_ep_str_format, 'train')
-        N_ck_str_format = '0' + str(int(max(math.ceil(np.log10(N_ck_tr)), 1))) + 'd'
+        N_ck_tr = compute_n_chunks(
+            out_folder, tr_data, ep, N_ep_str_format, 'train')
+        N_ck_str_format = '0' + \
+            str(int(max(math.ceil(np.log10(N_ck_tr)), 1))) + 'd'
 
         # ***Epoch training***
         for ck in range(N_ck_tr):
@@ -166,7 +173,8 @@ for ep in range(N_ep):
 
             model_files = {}
             for arch in pt_files.keys():
-                model_files[arch] = info_file.replace('.info', '_' + arch + '.pkl')
+                model_files[arch] = info_file.replace(
+                    '.info', '_' + arch + '.pkl')
 
             config_chunk_file = out_folder + '/exp_files/train_' + tr_data + '_ep' + format(ep,
                                                                                             N_ep_str_format) + '_ck' + format(
@@ -178,7 +186,8 @@ for ep in range(N_ep):
             # if this chunk has not already been processed, do training...
             if not (os.path.exists(info_file)):
 
-                print('Training %s chunk = %i / %i' % (tr_data, ck + 1, N_ck_tr))
+                print('Training %s chunk = %i / %i' %
+                      (tr_data, ck + 1, N_ck_tr))
 
                 # getting the next chunk
                 next_config_file = cfg_file_list[op_counter]
@@ -203,7 +212,7 @@ for ep in range(N_ep):
                 if not (os.path.exists(info_file)):
                     sys.stderr.write(
                         "ERROR: training epoch %i, chunk %i not done! File %s does not exist.\nSee %s \n" % (
-                        ep, ck, info_file, log_file))
+                            ep, ck, info_file, log_file))
                     sys.exit(0)
 
             # update the operation counter
@@ -241,8 +250,10 @@ for ep in range(N_ep):
     for valid_data in valid_data_lst:
 
         # Compute the number of chunks for each validation dataset
-        N_ck_valid = compute_n_chunks(out_folder, valid_data, ep, N_ep_str_format, 'valid')
-        N_ck_str_format = '0' + str(int(max(math.ceil(np.log10(N_ck_valid)), 1))) + 'd'
+        N_ck_valid = compute_n_chunks(
+            out_folder, valid_data, ep, N_ep_str_format, 'valid')
+        N_ck_str_format = '0' + \
+            str(int(max(math.ceil(np.log10(N_ck_valid)), 1))) + 'd'
 
         for ck in range(N_ck_valid):
 
@@ -256,7 +267,8 @@ for ep in range(N_ep):
 
             # Do validation if the chunk was not already processed
             if not (os.path.exists(info_file)):
-                print('Validating %s chunk = %i / %i' % (valid_data, ck + 1, N_ck_valid))
+                print('Validating %s chunk = %i / %i' %
+                      (valid_data, ck + 1, N_ck_valid))
 
                 # Doing eval
 
@@ -277,7 +289,7 @@ for ep in range(N_ep):
                 if not (os.path.exists(info_file)):
                     sys.stderr.write(
                         "ERROR: validation on epoch %i, chunk %i of dataset %s not done! File %s does not exist.\nSee %s \n" % (
-                        ep, ck, valid_data, info_file, log_file))
+                            ep, ck, valid_data, info_file, log_file))
                     sys.exit(0)
 
             # update the operation counter
@@ -286,8 +298,10 @@ for ep in range(N_ep):
         # Compute validation performance
         valid_info_lst = sorted(
             glob.glob(out_folder + '/exp_files/valid_' + valid_data + '_ep' + format(ep, N_ep_str_format) + '*.info'))
-        [valid_loss, valid_error, valid_time] = compute_avg_performance(valid_info_lst)
-        valid_peformance_dict[valid_data] = [valid_loss, valid_error, valid_time]
+        [valid_loss, valid_error, valid_time] = compute_avg_performance(
+            valid_info_lst)
+        valid_peformance_dict[valid_data] = [
+            valid_loss, valid_error, valid_time]
         tot_time = tot_time + valid_time
 
     # Print results in both res_file and stdout
@@ -297,35 +311,43 @@ for ep in range(N_ep):
     # Check for learning rate annealing
     if ep > 0:
         # computing average validation error (on all the dataset specified)
-        err_valid_mean = np.mean(np.asarray(list(valid_peformance_dict.values()))[:, 1])
-        err_valid_mean_prev = np.mean(np.asarray(list(valid_peformance_dict_prev.values()))[:, 1])
+        err_valid_mean = np.mean(np.asarray(
+            list(valid_peformance_dict.values()))[:, 1])
+        err_valid_mean_prev = np.mean(np.asarray(
+            list(valid_peformance_dict_prev.values()))[:, 1])
 
         for lr_arch in lr.keys():
             # If an external lr schedule is not set, use newbob learning rate anealing
             if ep < N_ep - 1 and auto_lr_annealing[lr_arch]:
                 if ((err_valid_mean_prev - err_valid_mean) / err_valid_mean) < improvement_threshold[lr_arch]:
-                    new_lr_value = float(lr[lr_arch][ep]) * halving_factor[lr_arch]
+                    new_lr_value = float(
+                        lr[lr_arch][ep]) * halving_factor[lr_arch]
                     for i in range(ep + 1, N_ep):
                         lr[lr_arch][i] = str(new_lr_value)
 
 # Training has ended, copy the last .pkl to final_arch.pkl for production
 for pt_arch in pt_files.keys():
     if os.path.exists(model_files[pt_arch]) and not os.path.exists(out_folder + '/exp_files/final_' + pt_arch + '.pkl'):
-        copyfile(model_files[pt_arch], out_folder + '/exp_files/final_' + pt_arch + '.pkl')
+        copyfile(model_files[pt_arch], out_folder +
+                 '/exp_files/final_' + pt_arch + '.pkl')
 
 # --------FORWARD--------#
 for forward_data in forward_data_lst:
 
     # Compute the number of chunks
-    N_ck_forward = compute_n_chunks(out_folder, forward_data, ep, N_ep_str_format, 'forward')
-    N_ck_str_format = '0' + str(int(max(math.ceil(np.log10(N_ck_forward)), 1))) + 'd'
+    N_ck_forward = compute_n_chunks(
+        out_folder, forward_data, ep, N_ep_str_format, 'forward')
+    N_ck_str_format = '0' + \
+        str(int(max(math.ceil(np.log10(N_ck_forward)), 1))) + 'd'
 
     for ck in range(N_ck_forward):
 
         if not is_production:
-            print('Testing %s chunk = %i / %i' % (forward_data, ck + 1, N_ck_forward))
+            print('Testing %s chunk = %i / %i' %
+                  (forward_data, ck + 1, N_ck_forward))
         else:
-            print('Forwarding %s chunk = %i / %i' % (forward_data, ck + 1, N_ck_forward))
+            print('Forwarding %s chunk = %i / %i' %
+                  (forward_data, ck + 1, N_ck_forward))
 
         # output file
         info_file = out_folder + '/exp_files/forward_' + forward_data + '_ep' + format(ep,
@@ -357,7 +379,7 @@ for forward_data in forward_data_lst:
             if not (os.path.exists(info_file)):
                 sys.stderr.write(
                     "ERROR: forward chunk %i of dataset %s not done! File %s does not exist.\nSee %s \n" % (
-                    ck, forward_data, info_file, log_file))
+                        ck, forward_data, info_file, log_file))
                 sys.exit(0)
 
         # update the operation counter
@@ -368,7 +390,8 @@ dec_lst = glob.glob(out_folder + '/exp_files/*_to_decode.ark')
 
 forward_data_lst = config['data_use']['forward_with'].split(',')
 forward_outs = config['forward']['forward_out'].split(',')
-forward_dec_outs = list(map(strtobool, config['forward']['require_decoding'].split(',')))
+forward_dec_outs = list(
+    map(strtobool, config['forward']['require_decoding'].split(',')))
 
 for data in forward_data_lst:
     for k in range(len(forward_outs)):
@@ -376,15 +399,18 @@ for data in forward_data_lst:
 
             print('Decoding %s output %s' % (data, forward_outs[k]))
 
-            info_file = out_folder + '/exp_files/decoding_' + data + '_' + forward_outs[k] + '.info'
+            info_file = out_folder + '/exp_files/decoding_' + \
+                data + '_' + forward_outs[k] + '.info'
 
             # create decode config file
-            config_dec_file = out_folder + '/decoding_' + data + '_' + forward_outs[k] + '.conf'
+            config_dec_file = out_folder + '/decoding_' + \
+                data + '_' + forward_outs[k] + '.conf'
             config_dec = configparser.ConfigParser()
             config_dec.add_section('decoding')
 
             for dec_key in config['decoding'].keys():
-                config_dec.set('decoding', dec_key, config['decoding'][dec_key])
+                config_dec.set('decoding', dec_key,
+                               config['decoding'][dec_key])
 
             # add graph_dir, datadir, alidir
             lab_field = config[cfg_item2sec(config, 'data_name', data)]['lab']
@@ -399,14 +425,16 @@ for data in forward_data_lst:
                 config_dec.set('decoding', 'data', os.path.abspath(datadir))
 
                 graphdir = re.findall(pattern, lab_field)[0][4]
-                config_dec.set('decoding', 'graphdir', os.path.abspath(graphdir))
+                config_dec.set('decoding', 'graphdir',
+                               os.path.abspath(graphdir))
             else:
                 pattern = 'lab_data_folder=(.*)\nlab_graph=(.*)'
                 datadir = re.findall(pattern, lab_field)[0][0]
                 config_dec.set('decoding', 'data', os.path.abspath(datadir))
 
                 graphdir = re.findall(pattern, lab_field)[0][1]
-                config_dec.set('decoding', 'graphdir', os.path.abspath(graphdir))
+                config_dec.set('decoding', 'graphdir',
+                               os.path.abspath(graphdir))
 
                 # The ali dir is supposed to be in exp/model/ which is one level ahead of graphdir
                 alidir = graphdir.split('/')[0:len(graphdir.split('/')) - 1]
@@ -417,8 +445,10 @@ for data in forward_data_lst:
                 config_dec.write(configfile)
 
             out_folder = os.path.abspath(out_folder)
-            files_dec = out_folder + '/exp_files/forward_' + data + '_ep*_ck*_' + forward_outs[k] + '_to_decode.ark'
-            out_dec_folder = out_folder + '/decode_' + data + '_' + forward_outs[k]
+            files_dec = out_folder + '/exp_files/forward_' + data + \
+                '_ep*_ck*_' + forward_outs[k] + '_to_decode.ark'
+            out_dec_folder = out_folder + '/decode_' + \
+                data + '_' + forward_outs[k]
 
             if not (os.path.exists(info_file)):
 
@@ -444,28 +474,3 @@ for data in forward_data_lst:
 # Saving Loss and Err as .txt and plotting curves
 if not is_production:
     create_curves(out_folder, N_ep, valid_data_lst)
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-

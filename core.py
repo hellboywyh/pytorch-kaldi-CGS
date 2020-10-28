@@ -1,5 +1,5 @@
 ##########################################################
-# pytorch-kaldi v.0.1                                      
+# pytorch-kaldi v.0.1
 # Mirco Ravanelli, Titouan Parcollet
 # Mila, University of Montreal
 # October 2018
@@ -19,7 +19,7 @@ import threading
 
 from data_io import read_lab_fea, open_or_fd, write_mat
 from utils import shift
-    
+
 
 def run_nn(data_name, data_set, data_end_index, fea_dict, lab_dict, arch_dict, cfg_file, processed_first,
            next_config_file, if_prune=False, if_apply_ghcgs=False, if_pattern_search=False):
@@ -27,7 +27,8 @@ def run_nn(data_name, data_set, data_end_index, fea_dict, lab_dict, arch_dict, c
 
     # Reading chunk-specific cfg file (first argument-mandatory file)
     if not (os.path.exists(cfg_file)):
-        sys.stderr.write('ERROR: The config file %s does not exist!\n' % (cfg_file))
+        sys.stderr.write(
+            'ERROR: The config file %s does not exist!\n' % (cfg_file))
         sys.exit(0)
     else:
         config = configparser.ConfigParser()
@@ -50,9 +51,12 @@ def run_nn(data_name, data_set, data_end_index, fea_dict, lab_dict, arch_dict, c
     model = config['model']['model'].split('\n')
 
     forward_outs = config['forward']['forward_out'].split(',')
-    forward_normalize_post = list(map(strtobool, config['forward']['normalize_posteriors'].split(',')))
-    forward_count_files = config['forward']['normalize_with_counts_from'].split(',')
-    require_decodings = list(map(strtobool, config['forward']['require_decoding'].split(',')))
+    forward_normalize_post = list(
+        map(strtobool, config['forward']['normalize_posteriors'].split(',')))
+    forward_count_files = config['forward']['normalize_with_counts_from'].split(
+        ',')
+    require_decodings = list(
+        map(strtobool, config['forward']['require_decoding'].split(',')))
 
     use_cuda = strtobool(config['exp']['use_cuda'])
     save_gpumem = strtobool(config['exp']['save_gpumem'])
@@ -73,7 +77,8 @@ def run_nn(data_name, data_set, data_end_index, fea_dict, lab_dict, arch_dict, c
         # Reading all the features and labels for this chunk
         shared_list = []
 
-        p = threading.Thread(target=read_lab_fea, args=(cfg_file, is_production, shared_list, output_folder,))
+        p = threading.Thread(target=read_lab_fea, args=(
+            cfg_file, is_production, shared_list, output_folder,))
         p.start()
         p.join()
 
@@ -92,13 +97,15 @@ def run_nn(data_name, data_set, data_end_index, fea_dict, lab_dict, arch_dict, c
 
     # Reading all the features and labels for the next chunk
     shared_list = []
-    p = threading.Thread(target=read_lab_fea, args=(next_config_file, is_production, shared_list, output_folder,))
+    p = threading.Thread(target=read_lab_fea, args=(
+        next_config_file, is_production, shared_list, output_folder,))
     p.start()
 
     # Reading model and initialize networks
     inp_out_dict = fea_dict
 
-    [nns, costs] = model_init(inp_out_dict, model, config, arch_dict, use_cuda, multi_gpu, to_do)
+    [nns, costs] = model_init(
+        inp_out_dict, model, config, arch_dict, use_cuda, multi_gpu, to_do)
 
     # optimizers initialization
     optimizers = optimizer_init(nns, config, arch_dict)
@@ -119,10 +126,13 @@ def run_nn(data_name, data_set, data_end_index, fea_dict, lab_dict, arch_dict, c
         post_file = {}
         for out_id in range(len(forward_outs)):
             if require_decodings[out_id]:
-                out_file = info_file.replace('.info', '_' + forward_outs[out_id] + '_to_decode.ark')
+                out_file = info_file.replace(
+                    '.info', '_' + forward_outs[out_id] + '_to_decode.ark')
             else:
-                out_file = info_file.replace('.info', '_' + forward_outs[out_id] + '.ark')
-            post_file[forward_outs[out_id]] = open_or_fd(out_file, output_folder, 'wb')
+                out_file = info_file.replace(
+                    '.info', '_' + forward_outs[out_id] + '.ark')
+            post_file[forward_outs[out_id]] = open_or_fd(
+                out_file, output_folder, 'wb')
 
     # Pattern search, model modification and mask saving
     # pattern_prun_model(model, pattern_mode, pattern_shape, pattern_nnz, mask_save_dir, mask_name)
@@ -173,7 +183,8 @@ def run_nn(data_name, data_set, data_end_index, fea_dict, lab_dict, arch_dict, c
                 N_zeros_left = random.randint(0, N_zeros)
 
                 # randomizing could have a regularization effect
-                inp[N_zeros_left:N_zeros_left + snt_len, k, :] = data_set[beg_snt:beg_snt + snt_len, :]
+                inp[N_zeros_left:N_zeros_left + snt_len, k,
+                    :] = data_set[beg_snt:beg_snt + snt_len, :]
 
                 beg_snt = data_end_index[snt_index]
                 snt_index = snt_index + 1
@@ -224,7 +235,8 @@ def run_nn(data_name, data_set, data_end_index, fea_dict, lab_dict, arch_dict, c
                     out_save = out_save - np.log(counts / np.sum(counts))
 
                     # save the output
-                write_mat(output_folder, post_file[forward_outs[out_id]], out_save, data_name[i])
+                write_mat(
+                    output_folder, post_file[forward_outs[out_id]], out_save, data_name[i])
         else:
             loss_sum = loss_sum + outs_dict['loss_final'].detach()
             err_sum = err_sum + outs_dict['err_final'].detach()
@@ -238,12 +250,15 @@ def run_nn(data_name, data_set, data_end_index, fea_dict, lab_dict, arch_dict, c
             status_string = "Training | (Batch " + str(i + 1) + "/" + str(N_batches) + ")" + " | L:" + str(
                 round(loss_sum.cpu().item() / (i + 1), 3))
             if i == N_batches - 1:
-                status_string = "Training | (Batch " + str(i + 1) + "/" + str(N_batches) + ")"
+                status_string = "Training | (Batch " + \
+                    str(i + 1) + "/" + str(N_batches) + ")"
 
         if to_do == 'valid':
-            status_string = "Validating | (Batch " + str(i + 1) + "/" + str(N_batches) + ")"
+            status_string = "Validating | (Batch " + \
+                str(i + 1) + "/" + str(N_batches) + ")"
         if to_do == 'forward':
-            status_string = "Forwarding | (Batch " + str(i + 1) + "/" + str(N_batches) + ")"
+            status_string = "Forwarding | (Batch " + \
+                str(i + 1) + "/" + str(N_batches) + ")"
 
         progress(i, N_batches, status=status_string)
 
@@ -276,7 +291,8 @@ def run_nn(data_name, data_set, data_end_index, fea_dict, lab_dict, arch_dict, c
             checkpoint['model_par'] = nns[net].state_dict()
             checkpoint['optimizer_par'] = optimizers[net].state_dict()
 
-            out_file = info_file.replace('.info', '_' + arch_dict[net][0] + '.pkl')
+            out_file = info_file.replace(
+                '.info', '_' + arch_dict[net][0] + '.pkl')
             torch.save(checkpoint, out_file)
 
     # if to_do == 'valid':
@@ -297,7 +313,7 @@ def run_nn(data_name, data_set, data_end_index, fea_dict, lab_dict, arch_dict, c
         text_file.write("[results]\n")
         if to_do != 'forward':
             text_file.write("loss=%s\n" % loss_tot.cpu().numpy())
-            text_file.write("erroptimizers=%s\n" % err_tot.cpu().numpy())
+            text_file.write("err=%s\n" % err_tot.cpu().numpy())
         text_file.write("elapsed_time_chunk=%f\n" % elapsed_time_chunk)
 
     text_file.close()

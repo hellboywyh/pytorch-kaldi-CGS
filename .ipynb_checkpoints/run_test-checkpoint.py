@@ -1,5 +1,5 @@
 ##########################################################
-# pytorch-kaldi v.0.1                                      
+# pytorch-kaldi v.0.1
 # Mirco Ravanelli, Titouan Parcollet
 # Mila, University of Montreal
 # October 2018
@@ -31,14 +31,16 @@ from pattern_search import pattern_prun_model
 # Reading global cfg file (first argument-mandatory file)
 cfg_file = sys.argv[1]
 if not (os.path.exists(cfg_file)):
-    sys.stderr.write('ERROR: The config file %s does not exist!\n' % (cfg_file))
+    sys.stderr.write(
+        'ERROR: The config file %s does not exist!\n' % (cfg_file))
     sys.exit(0)
 else:
     config = configparser.ConfigParser()
     config.read(cfg_file)
 
 # Reading and parsing optional arguments from command line (e.g.,--optimization,lr=0.002)
-[section_args, field_args, value_args] = read_args_command_line(sys.argv, config)
+[section_args, field_args, value_args] = read_args_command_line(
+    sys.argv, config)
 
 # Output folder creation
 out_folder = config['exp']['out_folder']
@@ -63,7 +65,8 @@ tr_data_lst = config['data_use']['train_with'].split(',')
 valid_data_lst = config['data_use']['valid_with'].split(',')
 forward_data_lst = config['data_use']['forward_with'].split(',')
 max_seq_length_train = config['batches']['max_seq_length_train']
-forward_save_files = list(map(strtobool, config['forward']['save_out_file'].split(',')))
+forward_save_files = list(
+    map(strtobool, config['forward']['save_out_file'].split(',')))
 
 if config.has_option('exp', 'apply_prune_ep'):
     apply_prune_ep = int(config.get('exp', 'apply_prune_ep'))
@@ -110,7 +113,8 @@ for arch in arch_lst:
         auto_lr_annealing[arch] = False
     else:
         auto_lr_annealing[arch] = True
-    improvement_threshold[arch] = float(config[arch]['arch_improvement_threshold'])
+    improvement_threshold[arch] = float(
+        config[arch]['arch_improvement_threshold'])
     halving_factor[arch] = float(config[arch]['arch_halving_factor'])
     pt_files[arch] = config[arch]['arch_pretrain_file']
 
@@ -126,7 +130,8 @@ if is_production:
 op_counter = 1  # used to dected the next configuration file from the list_chunks.txt
 
 # Reading the ordered list of config file to process
-cfg_file_list = [line.rstrip('\n') for line in open(out_folder + '/exp_files/list_chunks.txt')]
+cfg_file_list = [line.rstrip('\n') for line in open(
+    out_folder + '/exp_files/list_chunks.txt')]
 cfg_file_list.append(cfg_file_list[-1])
 
 # A variable that tells if the current chunk is the first one that is being processed:
@@ -144,10 +149,12 @@ arch_dict = []
 # Reading all the features and labels for this chunk
 ep = N_ep - 1
 ck = 0
-N_ck_forward = compute_n_chunks(out_folder, forward_data_lst[0], ep, N_ep_str_format, 'forward')
-N_ck_str_format = '0' + str(int(max(math.ceil(np.log10(N_ck_forward)), 1))) + 'd'
+N_ck_forward = compute_n_chunks(
+    out_folder, forward_data_lst[0], ep, N_ep_str_format, 'forward')
+N_ck_str_format = '0' + \
+    str(int(max(math.ceil(np.log10(N_ck_forward)), 1))) + 'd'
 config_chunk_file = out_folder + '/exp_files/forward_' + forward_data_lst[0] + '_ep' + format(ep, N_ep_str_format)\
-                    + '_ck' + format(ck, N_ck_str_format) + '.cfg'
+    + '_ck' + format(ck, N_ck_str_format) + '.cfg'
 shared_list = []
 test_config = configparser.ConfigParser()
 test_cfg_file = config_chunk_file
@@ -160,7 +167,8 @@ multi_gpu = strtobool(test_config['exp']['multi_gpu'])
 to_do = test_config['exp']['to_do']
 info_file = test_config['exp']['out_info']
 
-p = threading.Thread(target=read_lab_fea, args=(test_cfg_file, is_production, shared_list, output_folder,))
+p = threading.Thread(target=read_lab_fea, args=(
+    test_cfg_file, is_production, shared_list, output_folder,))
 p.start()
 p.join()
 
@@ -171,20 +179,21 @@ lab_dict = shared_list[3]
 arch_dict = shared_list[4]
 data_set = shared_list[5]
 
-[nns, costs] = model_init(fea_dict, model, test_config, arch_dict, use_cuda, multi_gpu, to_do)
+[nns, costs] = model_init(fea_dict, model, test_config,
+                          arch_dict, use_cuda, multi_gpu, to_do)
 # optimizers initialization
 optimizers = optimizer_init(nns, test_config, arch_dict)
 
 # load pre-training model
 for net in nns.keys():
     pt_file_arch = config[arch_dict[net][0]]['arch_pretrain_file']
-
+    print(pt_file_arch)
     if pt_file_arch != 'none':
         checkpoint_load = torch.load(pt_file_arch)
         nns[net].load_state_dict(checkpoint_load['model_par'])
         optimizers[net].load_state_dict(checkpoint_load['optimizer_par'])
-        optimizers[net].param_groups[0]['lr'] = float(
-            test_config[arch_dict[net][0]]['arch_lr'])  # loading lr of the cfg file for pt
+#         optimizers[net].param_groups[0]['lr'] = float(
+#             test_config[arch_dict[net][0]]['arch_lr'])  # loading lr of the cfg file for pt
 
 # pattern prun model
 if_pattern_prun = strtobool(config['pattern']['pattern_prun'])
@@ -193,27 +202,34 @@ pattern_shape = list(map(int, config['pattern']['pattern_shape'].split(',')))
 pattern_nnz = int(config['pattern']['pattern_nnz'])
 
 if if_pattern_prun:
-    nns = pattern_prun_model(nns, pattern_num, pattern_shape, pattern_nnz, if_pattern_prun=True)
+#     nns = pattern_prun_model(
+#         nns, pattern_num, pattern_shape, pattern_nnz, if_pattern_prun=True)
     # save pattern pruned model
     for net in nns.keys():
         checkpoint = {}
         checkpoint['model_par'] = nns[net].state_dict()
         checkpoint['optimizer_par'] = optimizers[net].state_dict()
 
-        out_file = info_file.replace('.info', f'_{arch_dict[net][0]}_{pattern_num}_{pattern_shape[0]}x{pattern_shape[1]}_{pattern_nnz}_pattern.pkl')
+        out_file = info_file.replace(
+            '.info', f'_{arch_dict[net][0]}_{pattern_num}_{pattern_shape[0]}x{pattern_shape[1]}_{pattern_nnz}_pattern.pkl')
+#         out_file = config_test[arch_dict[net][0]]['arch_pretrain_file']
+        print(out_file)
         torch.save(checkpoint, out_file)
 
 # modify pre_trained model in test cfg
 for ck in range(N_ck_forward):
-    config_chunk_file = out_folder + '/exp_files/forward_' + forward_data_lst[0] + '_ep' + format(ep,N_ep_str_format) + '_ck' + format(ck, N_ck_str_format) + '.cfg'
+    config_chunk_file = out_folder + '/exp_files/forward_' + \
+        forward_data_lst[0] + '_ep' + \
+        format(ep, N_ep_str_format) + '_ck' + \
+        format(ck, N_ck_str_format) + '.cfg'
     config_chunk = configparser.ConfigParser()
     config_chunk.read(config_chunk_file)
     for arch in arch_lst:
-        config_chunk[arch]["arch_pretrain_file"] = info_file.replace('.info', f'_{arch}_{pattern_num}_{pattern_shape[0]}x{pattern_shape[1]}_{pattern_nnz}_pattern.pkl')
+        config_chunk[arch]["arch_pretrain_file"] = info_file.replace(
+            '.info', f'_{arch}_{pattern_num}_{pattern_shape[0]}x{pattern_shape[1]}_{pattern_nnz}_pattern.pkl')
     # Write cfg_file_chunk
     with open(config_chunk_file, 'w') as configfile:
         config_chunk.write(configfile)
-
 
 
 # --------FORWARD--------#
@@ -221,15 +237,19 @@ ep = N_ep - 1
 for forward_data in forward_data_lst:
 
     # Compute the number of chunks
-    N_ck_forward = compute_n_chunks(out_folder, forward_data, ep, N_ep_str_format, 'forward')
-    N_ck_str_format = '0' + str(int(max(math.ceil(np.log10(N_ck_forward)), 1))) + 'd'
+    N_ck_forward = compute_n_chunks(
+        out_folder, forward_data, ep, N_ep_str_format, 'forward')
+    N_ck_str_format = '0' + \
+        str(int(max(math.ceil(np.log10(N_ck_forward)), 1))) + 'd'
 
     for ck in range(N_ck_forward):
 
         if not is_production:
-            print('Testing %s chunk = %i / %i' % (forward_data, ck + 1, N_ck_forward))
+            print('Testing %s chunk = %i / %i' %
+                  (forward_data, ck + 1, N_ck_forward))
         else:
-            print('Forwarding %s chunk = %i / %i' % (forward_data, ck + 1, N_ck_forward))
+            print('Forwarding %s chunk = %i / %i' %
+                  (forward_data, ck + 1, N_ck_forward))
 
         # output file
         info_file = out_folder + '/exp_files/forward_' + forward_data + '_ep' + format(ep,
@@ -247,26 +267,23 @@ for forward_data in forward_data_lst:
             # getting the next chunk
             next_config_file = cfg_file_list[op_counter]
 
-            
-
             # run chunk processing
-            [data_name, data_set, data_end_index, \
-            fea_dict, lab_dict, arch_dict] = run_nn(data_name, data_set,
-                                                    data_end_index, fea_dict,
-                                                    lab_dict, arch_dict,
-                                                    config_chunk_file,
-                                                    processed_first,
-                                                    next_config_file,
-                                                    if_pattern_search=False)
+            [data_name, data_set, data_end_index,
+             fea_dict, lab_dict, arch_dict] = run_nn(data_name, data_set,
+                                                     data_end_index, fea_dict,
+                                                     lab_dict, arch_dict,
+                                                     config_chunk_file,
+                                                     processed_first,
+                                                     next_config_file,
+                                                     if_pattern_search=False)
 
             # update the first_processed variable
             processed_first = False
-            
 
             if not (os.path.exists(info_file)):
                 sys.stderr.write(
                     "ERROR: forward chunk %i of dataset %s not done! File %s does not exist.\nSee %s \n" % (
-                    ck, forward_data, info_file, log_file))
+                        ck, forward_data, info_file, log_file))
                 sys.exit(0)
 
         # update the operation counter
@@ -277,7 +294,8 @@ dec_lst = glob.glob(out_folder + '/exp_files/*_to_decode.ark')
 
 forward_data_lst = config['data_use']['forward_with'].split(',')
 forward_outs = config['forward']['forward_out'].split(',')
-forward_dec_outs = list(map(strtobool, config['forward']['require_decoding'].split(',')))
+forward_dec_outs = list(
+    map(strtobool, config['forward']['require_decoding'].split(',')))
 
 for data in forward_data_lst:
     for k in range(len(forward_outs)):
@@ -285,15 +303,18 @@ for data in forward_data_lst:
 
             print('Decoding %s output %s' % (data, forward_outs[k]))
 
-            info_file = out_folder + '/exp_files/decoding_' + data + '_' + forward_outs[k] + '.info'
+            info_file = out_folder + '/exp_files/decoding_' + \
+                data + '_' + forward_outs[k] + '.info'
 
             # create decode config file
-            config_dec_file = out_folder + '/decoding_' + data + '_' + forward_outs[k] + '.conf'
+            config_dec_file = out_folder + '/decoding_' + \
+                data + '_' + forward_outs[k] + '.conf'
             config_dec = configparser.ConfigParser()
             config_dec.add_section('decoding')
 
             for dec_key in config['decoding'].keys():
-                config_dec.set('decoding', dec_key, config['decoding'][dec_key])
+                config_dec.set('decoding', dec_key,
+                               config['decoding'][dec_key])
 
             # add graph_dir, datadir, alidir
             lab_field = config[cfg_item2sec(config, 'data_name', data)]['lab']
@@ -308,14 +329,16 @@ for data in forward_data_lst:
                 config_dec.set('decoding', 'data', os.path.abspath(datadir))
 
                 graphdir = re.findall(pattern, lab_field)[0][4]
-                config_dec.set('decoding', 'graphdir', os.path.abspath(graphdir))
+                config_dec.set('decoding', 'graphdir',
+                               os.path.abspath(graphdir))
             else:
                 pattern = 'lab_data_folder=(.*)\nlab_graph=(.*)'
                 datadir = re.findall(pattern, lab_field)[0][0]
                 config_dec.set('decoding', 'data', os.path.abspath(datadir))
 
                 graphdir = re.findall(pattern, lab_field)[0][1]
-                config_dec.set('decoding', 'graphdir', os.path.abspath(graphdir))
+                config_dec.set('decoding', 'graphdir',
+                               os.path.abspath(graphdir))
 
                 # The ali dir is supposed to be in exp/model/ which is one level ahead of graphdir
                 alidir = graphdir.split('/')[0:len(graphdir.split('/')) - 1]
@@ -326,8 +349,10 @@ for data in forward_data_lst:
                 config_dec.write(configfile)
 
             out_folder = os.path.abspath(out_folder)
-            files_dec = out_folder + '/exp_files/forward_' + data + '_ep*_ck*_' + forward_outs[k] + '_to_decode.ark'
-            out_dec_folder = out_folder + '/decode_' + data + '_' + forward_outs[k]
+            files_dec = out_folder + '/exp_files/forward_' + data + \
+                '_ep*_ck*_' + forward_outs[k] + '_to_decode.ark'
+            out_dec_folder = out_folder + '/decode_' + \
+                data + '_' + forward_outs[k]
 
             if not (os.path.exists(info_file)):
 
@@ -349,28 +374,3 @@ for data in forward_data_lst:
             res_file = open(res_file_path, "a")
             res_file.write('%s\n' % wers)
             print(wers)
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-

@@ -20,10 +20,11 @@ import threading
 from data_io import read_lab_fea, open_or_fd, write_mat
 from pattern_search import pattern_prun_model
 
-cfg_file = '/yhwang/0-Projects/0-kaldi-lstm/2-pytorch-kaldi-cgs/cfg/20201021_Pattern_Search/TIMIT_LSTM_fmllr_L2_8bw_16ba_wohcgs_v1_16_8x8_8.cfg'
+cfg_file = '/yhwang/0-Projects/0-kaldi-lstm/2-pytorch-kaldi-cgs/cfg/20201021_Pattern_Search/TIMIT_LSTM_fmllr_L2_8bw_16ba_wohcgs_v1.cfg'
 
 if not (os.path.exists(cfg_file)):
-    sys.stderr.write('ERROR: The config file %s does not exist!\n' % (cfg_file))
+    sys.stderr.write(
+        'ERROR: The config file %s does not exist!\n' % (cfg_file))
     sys.exit(0)
 else:
     config = configparser.ConfigParser()
@@ -37,7 +38,8 @@ cfg_file_proto = config['cfg_proto']['cfg_proto']
 [config, name_data, name_arch] = check_cfg(cfg_file, config, cfg_file_proto)
 
 out_folder = config['exp']['out_folder']
-forward_save_files = list(map(strtobool, config['forward']['save_out_file'].split(',')))
+forward_save_files = list(
+    map(strtobool, config['forward']['save_out_file'].split(',')))
 is_production = strtobool(config['exp']['production'])
 cmd = config['exp']['cmd']
 res_file_path = out_folder + '/res.res'
@@ -47,23 +49,26 @@ dec_lst = glob.glob(out_folder + '/exp_files/*_to_decode.ark')
 
 forward_data_lst = config['data_use']['forward_with'].split(',')
 forward_outs = config['forward']['forward_out'].split(',')
-forward_dec_outs = list(map(strtobool, config['forward']['require_decoding'].split(',')))
-
+forward_dec_outs = list(
+    map(strtobool, config['forward']['require_decoding'].split(',')))
 for data in forward_data_lst:
     for k in range(len(forward_outs)):
         if forward_dec_outs[k]:
 
             print('Decoding %s output %s' % (data, forward_outs[k]))
 
-            info_file = out_folder + '/exp_files/decoding_' + data + '_' + forward_outs[k] + '.info'
+            info_file = out_folder + '/exp_files/decoding_' + \
+                data + '_' + forward_outs[k] + '.info'
 
             # create decode config file
-            config_dec_file = out_folder + '/decoding_' + data + '_' + forward_outs[k] + '.conf'
+            config_dec_file = out_folder + '/decoding_' + \
+                data + '_' + forward_outs[k] + '.conf'
             config_dec = configparser.ConfigParser()
             config_dec.add_section('decoding')
 
             for dec_key in config['decoding'].keys():
-                config_dec.set('decoding', dec_key, config['decoding'][dec_key])
+                config_dec.set('decoding', dec_key,
+                               config['decoding'][dec_key])
 
             # add graph_dir, datadir, alidir
             lab_field = config[cfg_item2sec(config, 'data_name', data)]['lab']
@@ -78,14 +83,16 @@ for data in forward_data_lst:
                 config_dec.set('decoding', 'data', os.path.abspath(datadir))
 
                 graphdir = re.findall(pattern, lab_field)[0][4]
-                config_dec.set('decoding', 'graphdir', os.path.abspath(graphdir))
+                config_dec.set('decoding', 'graphdir',
+                               os.path.abspath(graphdir))
             else:
                 pattern = 'lab_data_folder=(.*)\nlab_graph=(.*)'
                 datadir = re.findall(pattern, lab_field)[0][0]
                 config_dec.set('decoding', 'data', os.path.abspath(datadir))
 
                 graphdir = re.findall(pattern, lab_field)[0][1]
-                config_dec.set('decoding', 'graphdir', os.path.abspath(graphdir))
+                config_dec.set('decoding', 'graphdir',
+                               os.path.abspath(graphdir))
 
                 # The ali dir is supposed to be in exp/model/ which is one level ahead of graphdir
                 alidir = graphdir.split('/')[0:len(graphdir.split('/')) - 1]
@@ -96,15 +103,18 @@ for data in forward_data_lst:
                 config_dec.write(configfile)
 
             out_folder = os.path.abspath(out_folder)
-            files_dec = out_folder + '/exp_files/forward_' + data + '_ep*_ck*_' + forward_outs[k] + '_to_decode.ark'
-            out_dec_folder = out_folder + '/decode_' + data + '_' + forward_outs[k]
-
+            files_dec = out_folder + '/exp_files/forward_' + data + \
+                '_ep*_ck*_' + forward_outs[k] + '_to_decode.ark'
+            out_dec_folder = out_folder + '/decode_' + \
+                data + '_' + forward_outs[k]
+            print(info_file)
             if not (os.path.exists(info_file)):
 
                 # Run the decoder
                 cmd_decode = cmd + config['decoding']['decoding_script_folder'] + '/' + config['decoding'][
                     'decoding_script'] + ' ' + os.path.abspath(
                     config_dec_file) + ' ' + out_dec_folder + ' \"' + files_dec + '\"'
+                print(cmd_decode, log_file)
                 run_shell(cmd_decode, log_file)
 
                 # remove ark files if needed
@@ -115,6 +125,7 @@ for data in forward_data_lst:
 
             # Print WER results and write info file
             cmd_res = './check_res_dec.sh ' + out_dec_folder
+            print(cmd_res, log_file)
             wers = run_shell(cmd_res, log_file).decode('utf-8')
             res_file = open(res_file_path, "a")
             res_file.write('%s\n' % wers)

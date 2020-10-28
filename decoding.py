@@ -20,7 +20,7 @@ import threading
 from data_io import read_lab_fea, open_or_fd, write_mat
 from pattern_search import pattern_prun_model
 
-cfg_file = '/yhwang/0-Projects/0-kaldi-lstm/2-pytorch-kaldi-cgs/cfg/20201021_Pattern_Search/TIMIT_LSTM_fmllr_L2_8bw_16ba_wohcgs_v1_16_8x8_16.cfg'
+cfg_file = '/yhwang/0-Projects/0-kaldi-lstm/2-pytorch-kaldi-cgs/cfg/20201021_Pattern_Search/TIMIT_LSTM_fmllr_L2_8bw_16ba_wohcgs_v1.cfg'
 
 if not (os.path.exists(cfg_file)):
     sys.stderr.write(
@@ -51,7 +51,6 @@ forward_data_lst = config['data_use']['forward_with'].split(',')
 forward_outs = config['forward']['forward_out'].split(',')
 forward_dec_outs = list(
     map(strtobool, config['forward']['require_decoding'].split(',')))
-
 for data in forward_data_lst:
     for k in range(len(forward_outs)):
         if forward_dec_outs[k]:
@@ -108,13 +107,14 @@ for data in forward_data_lst:
                 '_ep*_ck*_' + forward_outs[k] + '_to_decode.ark'
             out_dec_folder = out_folder + '/decode_' + \
                 data + '_' + forward_outs[k]
-
+            print(info_file)
             if not (os.path.exists(info_file)):
 
                 # Run the decoder
                 cmd_decode = cmd + config['decoding']['decoding_script_folder'] + '/' + config['decoding'][
                     'decoding_script'] + ' ' + os.path.abspath(
                     config_dec_file) + ' ' + out_dec_folder + ' \"' + files_dec + '\"'
+                print(cmd_decode, log_file)
                 run_shell(cmd_decode, log_file)
 
                 # remove ark files if needed
@@ -125,6 +125,7 @@ for data in forward_data_lst:
 
             # Print WER results and write info file
             cmd_res = './check_res_dec.sh ' + out_dec_folder
+            print(cmd_res, log_file)
             wers = run_shell(cmd_res, log_file).decode('utf-8')
             res_file = open(res_file_path, "a")
             res_file.write('%s\n' % wers)
