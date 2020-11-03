@@ -26,7 +26,7 @@ import importlib
 import math
 import threading
 from data_io import read_lab_fea, open_or_fd, write_mat
-from pattern_search import pattern_prun_model
+from pattern_search import pattern_certain_nnz_prun_model
 
 # Reading global cfg file (first argument-mandatory file)
 cfg_file = sys.argv[1]
@@ -202,8 +202,8 @@ pattern_shape = list(map(int, config['pattern']['pattern_shape'].split(',')))
 pattern_nnz = int(config['pattern']['pattern_nnz'])
 
 if if_pattern_prun:
-#     nns = pattern_prun_model(
-#         nns, pattern_num, pattern_shape, pattern_nnz, if_pattern_prun=True)
+    nns = pattern_certain_nnz_prun_model(
+        nns, pattern_num, pattern_shape, pattern_nnz, if_pattern_prun=True)
     # save pattern pruned model
     for net in nns.keys():
         checkpoint = {}
@@ -212,24 +212,24 @@ if if_pattern_prun:
 
         out_file = info_file.replace(
             '.info', f'_{arch_dict[net][0]}_{pattern_num}_{pattern_shape[0]}x{pattern_shape[1]}_{pattern_nnz}_pattern.pkl')
-#         out_file = config_test[arch_dict[net][0]]['arch_pretrain_file']
+#         out_file = test_config[arch_dict[net][0]]['arch_pretrain_file']
         print(out_file)
         torch.save(checkpoint, out_file)
 
-# modify pre_trained model in test cfg
-for ck in range(N_ck_forward):
-    config_chunk_file = out_folder + '/exp_files/forward_' + \
-        forward_data_lst[0] + '_ep' + \
-        format(ep, N_ep_str_format) + '_ck' + \
-        format(ck, N_ck_str_format) + '.cfg'
-    config_chunk = configparser.ConfigParser()
-    config_chunk.read(config_chunk_file)
-    for arch in arch_lst:
-        config_chunk[arch]["arch_pretrain_file"] = info_file.replace(
-            '.info', f'_{arch}_{pattern_num}_{pattern_shape[0]}x{pattern_shape[1]}_{pattern_nnz}_pattern.pkl')
-    # Write cfg_file_chunk
-    with open(config_chunk_file, 'w') as configfile:
-        config_chunk.write(configfile)
+# # modify pre_trained model in test cfg
+# for ck in range(N_ck_forward):
+#     config_chunk_file = out_folder + '/exp_files/forward_' + \
+#         forward_data_lst[0] + '_ep' + \
+#         format(ep, N_ep_str_format) + '_ck' + \
+#         format(ck, N_ck_str_format) + '.cfg'
+#     config_chunk = configparser.ConfigParser()
+#     config_chunk.read(config_chunk_file)
+#     for arch in arch_lst:
+#         config_chunk[arch]["arch_pretrain_file"] = info_file.replace(
+#             '.info', f'_{arch}_{pattern_num}_{pattern_shape[0]}x{pattern_shape[1]}_{pattern_nnz}_pattern.pkl')
+#     # Write cfg_file_chunk
+#     with open(config_chunk_file, 'w') as configfile:
+#         config_chunk.write(configfile)
 
 
 # --------FORWARD--------#
@@ -241,7 +241,7 @@ for forward_data in forward_data_lst:
         out_folder, forward_data, ep, N_ep_str_format, 'forward')
     N_ck_str_format = '0' + \
         str(int(max(math.ceil(np.log10(N_ck_forward)), 1))) + 'd'
-
+    print("N_ck_forward:",N_ck_forward)
     for ck in range(N_ck_forward):
 
         if not is_production:

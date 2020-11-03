@@ -120,6 +120,13 @@ def run_nn(data_name, data_set, data_end_index, fea_dict, lab_dict, arch_dict, c
             optimizers[net].load_state_dict(checkpoint_load['optimizer_par'])
             optimizers[net].param_groups[0]['lr'] = float(
                 config[arch_dict[net][0]]['arch_lr'])  # loading lr of the cfg file for pt
+        #pruning if needed
+        if nns[net].prune and if_prune:
+            print('Pruning parameters of ' + net)
+            prune_ret = nns[net].prune_parameters()
+            if prune_ret == 1:
+                print('Testing: Pruning complete of ' + net)
+
 
     if to_do == 'forward':
 

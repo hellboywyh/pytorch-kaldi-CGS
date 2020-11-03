@@ -100,6 +100,17 @@ Quantized_models.py(line96) quantised_inp
     * (9):37.0% 8bit weight+16bit activate+ 64x LSTM hcgs+64x MLP hcgs,通过第一层2/８，第二层１/16的方式实现
             文件：0-Projects/0-kaldi-lstm/2-pytorch-kaldi-cgs/exp/20200922_QuanExp/TIMIT_LSTM_fmllr_L2_8bw_16ba_whcgs_64x_v6
             
-### 6.2020928
-#### 5.1. Pattern的初步探索：
+### 6.20200928
+#### 6.1. Pattern的初步探索：
     1.初始化随机选择16个8*8/4的Pattern，每个512×512划分64*64个blocks随机选择pattern，训练过程中不变化。最终达到的准确度为21.3%，和同样为16x压缩的asu达到的效果相同。
+
+### 7.20201103 Pruning and retrain
+分两个任务做
+* 训练一个pruning的网络，这样网络中就可以有mask，直接使用我们的无损编码，和别的无损编码相比较
+问题1：网络中的pruning好像不是每个forward进行一次，而是每个epoch进行一次，为什么要这么做？
+而且prune是在固定的epoch之后和固定的chunk之后才有，不是每个epoch，每个chunk都有的。
+* 对于dense的网络
+1.先测试精度
+2.不同的compression rate进行pruning，测试精度，保存模型
+3.pattern_search+pattern_pruning,输出overhead中间数据,输出真实的compression rate，测试精度，保存模型
+4.按照该pattern retraining模型，每个epoch进行测试，保存精度。

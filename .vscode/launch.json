@@ -12,7 +12,9 @@
             "console": "integratedTerminal",
             "args": [
                 // "cfg/20201018_Sparsity_Mode/TIMIT_LSTM_fmllr_L2_8bw_16ba_whcgs_16x_pattern_coo.cfg"
-                "cfg/20201021_Pattern_Search/TIMIT_LSTM_fmllr_L2_8bw_16ba_wohcgs_v1.cfg"
+                // "cfg/20201021_Pattern_Search/TIMIT_LSTM_fmllr_L2_8bw_16ba_wohcgs_v2.cfg"
+                // "cfg/20201103_pattern_pruning_retrain/TIMIT_LSTM_fmllr_L2_8bw_16ba_wohcgs_8x.cfg"
+                "cfg/20201102_Pruning_model/TIMIT_LSTM_fmllr_L2_8bw_16ba_wohcgs_16x.cfg"
             ]
         }
     ]

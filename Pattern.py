@@ -5,7 +5,7 @@ Author: Wang Yanhong
 email: 284520535@qq.com
 Date: 2020-10-20 06:22:15
 LastEditors: Wang Yanhong
-LastEditTime: 2020-10-22 23:36:24
+LastEditTime: 2020-11-03 09:26:17
 '''
 
 import math
@@ -51,77 +51,87 @@ class Pattern(Module):
         elif self.pattern_mode == 'pattern_coo':
             return self.pattern_coo_mask()
         else:
-            return(Parameter(torch.from_numpy(np.zeros(self.dense_features.shape)))) 
+            return(Parameter(torch.from_numpy(np.zeros(self.dense_features.shape))))
 
     def get_pattern(self, pattern_nnz):
         # block_num = self.dense_features//self.block_size
         if self.pattern_from_file:
             if not os.path.exists(pattern_from_file):
-                print("Error: Pattern file \"%s\" does not exists!"%pattern_from_file)
+                print("Error: Pattern file \"%s\" does not exists!" %
+                      pattern_from_file)
                 exit()
             pattern = np.load(pattern_from_file)
-            pattern = np.split(pattern,self.pattern_num,0)
+            pattern = np.split(pattern, self.pattern_num, 0)
         else:
             pattern = []
             for i in range(self.pattern_num):
                 mask = np.zeros(np.prod(self.pattern_shape))
-                mask[np.random.choice(mask.shape[0],pattern_nnz)] = 1
+                mask[np.random.choice(mask.shape[0], pattern_nnz)] = 1
                 pattern.append(mask.reshape(self.pattern_shape))
         return pattern
 
     def pattern_mask(self):
         self.pattern = self.get_pattern(self.pattern_nnz)
-        assert self.dense_features.shape[0]%self.pattern_shape[0]==0, f'Error:{self.dense_features.shape[0]} can not be divisible by {self.pattern_shape[0]}'
-        assert self.dense_features.shape[1]%self.pattern_shape[1]==0, f'Error:{self.dense_features.shape[1]} can not be divisible by {self.pattern_shape[1]}'
+        assert self.dense_features.shape[0] % self.pattern_shape[
+            0] == 0, f'Error:{self.dense_features.shape[0]} can not be divisible by {self.pattern_shape[0]}'
+        assert self.dense_features.shape[1] % self.pattern_shape[
+            1] == 0, f'Error:{self.dense_features.shape[1]} can not be divisible by {self.pattern_shape[1]}'
         self.mask = np.zeros(self.dense_features.shape)
         row_block_num = self.dense_features.shape[0]//self.pattern_shape[0]
         col_block_num = self.dense_features.shape[1]//self.pattern_shape[1]
         for i in range(row_block_num):
             for j in range(col_block_num):
-                self.mask[i*self.pattern_shape[0]:(i+1)*self.pattern_shape[0],\
-                    j*self.pattern_shape[1]:(j+1)*self.pattern_shape[1]] = \
-                    self.pattern[np.random.choice(self.pattern_num,1)[0]]
+                self.mask[i*self.pattern_shape[0]:(i+1)*self.pattern_shape[0],
+                          j*self.pattern_shape[1]:(j+1)*self.pattern_shape[1]] = \
+                    self.pattern[np.random.choice(self.pattern_num, 1)[0]]
         return(Parameter(torch.from_numpy(self.mask)))
 
     def coo_mask(self):
-        assert self.dense_features.shape[0]%self.pattern_shape[0]==0, f'Error:{self.dense_features.shape[0]} can not be divisible by {self.pattern_shape[0]}'
-        assert self.dense_features.shape[1]%self.pattern_shape[1]==0, f'Error:{self.dense_features.shape[1]} can not be divisible by {self.pattern_shape[1]}'
+        assert self.dense_features.shape[0] % self.pattern_shape[
+            0] == 0, f'Error:{self.dense_features.shape[0]} can not be divisible by {self.pattern_shape[0]}'
+        assert self.dense_features.shape[1] % self.pattern_shape[
+            1] == 0, f'Error:{self.dense_features.shape[1]} can not be divisible by {self.pattern_shape[1]}'
         self.mask = np.zeros(self.dense_features.shape)
         row_block_num = self.dense_features.shape[0]//self.pattern_shape[0]
         col_block_num = self.dense_features.shape[1]//self.pattern_shape[1]
         for i in range(row_block_num):
             for j in range(col_block_num):
-                dense_features_block = self.dense_features[i*self.pattern_shape[0]:(i+1)*self.pattern_shape[0],\
-                                        j*self.pattern_shape[1]:(j+1)*self.pattern_shape[1]].flatten()
+                dense_features_block = self.dense_features[i*self.pattern_shape[0]:(i+1)*self.pattern_shape[0],
+                                                           j*self.pattern_shape[1]:(j+1)*self.pattern_shape[1]].flatten()
                 mask_block = np.zeros(dense_features_block.shape)
-                mask_block[np.argsort(np.abs(dense_features_block))[-self.pattern_nnz:]] = 1
-                self.mask[i*self.pattern_shape[0]:(i+1)*self.pattern_shape[0],\
-                                        j*self.pattern_shape[1]:(j+1)*self.pattern_shape[1]] = mask_block.reshape(self.pattern_shape)
+                mask_block[np.argsort(
+                    np.abs(dense_features_block))[-self.pattern_nnz:]] = 1
+                self.mask[i*self.pattern_shape[0]:(i+1)*self.pattern_shape[0],
+                          j*self.pattern_shape[1]:(j+1)*self.pattern_shape[1]] = mask_block.reshape(self.pattern_shape)
         return(Parameter(torch.from_numpy(self.mask)))
 
     def pattern_coo_mask(self):
-        assert self.dense_features.shape[0]%self.pattern_shape[0]==0, f'Error:{self.dense_features.shape[0]} can not be divisible by {self.pattern_shape[0]}'
-        assert self.dense_features.shape[1]%self.pattern_shape[1]==0, f'Error:{self.dense_features.shape[1]} can not be divisible by {self.pattern_shape[1]}'
+        assert self.dense_features.shape[0] % self.pattern_shape[
+            0] == 0, f'Error:{self.dense_features.shape[0]} can not be divisible by {self.pattern_shape[0]}'
+        assert self.dense_features.shape[1] % self.pattern_shape[
+            1] == 0, f'Error:{self.dense_features.shape[1]} can not be divisible by {self.pattern_shape[1]}'
         row_block_num = self.dense_features.shape[0]//self.pattern_shape[0]
         col_block_num = self.dense_features.shape[1]//self.pattern_shape[1]
         self.mask = np.zeros(self.dense_features.shape)
-        self.pat_nnz = int(self.pattern_nnz * self.pattern_shape[0] * self.pattern_shape[1] \
-                        /(64 + self.pattern_shape[0] * self.pattern_shape[1]))
+        self.pat_nnz = math.ceil(self.pattern_nnz/2)
         self.coo_nnz = self.pattern_nnz - self.pat_nnz
         self.pattern = self.get_pattern(self.pat_nnz)
         for i in range(row_block_num):
             for j in range(col_block_num):
-                mask_block = self.pattern[np.random.choice(self.pattern_num,1)[0]].flatten()
-                dense_features_block = self.dense_features[i*self.pattern_shape[0]:(i+1)*self.pattern_shape[0],\
-                                        j*self.pattern_shape[1]:(j+1)*self.pattern_shape[1]].flatten()
-                mask_block[np.argsort(np.abs(np.array(dense_features_block)*(np.ones_like(mask_block) - mask_block)))[-self.coo_nnz:]]=1
-                self.mask[i*self.pattern_shape[0]:(i+1)*self.pattern_shape[0],\
-                                        j*self.pattern_shape[1]:(j+1)*self.pattern_shape[1]] = mask_block.reshape(self.pattern_shape)
+                mask_block = self.pattern[np.random.choice(
+                    self.pattern_num, 1)[0]].flatten()
+                dense_features_block = self.dense_features[i*self.pattern_shape[0]:(i+1)*self.pattern_shape[0],
+                                                           j*self.pattern_shape[1]:(j+1)*self.pattern_shape[1]].flatten()
+                mask_block[np.argsort(np.abs(np.array(
+                    dense_features_block)*(np.ones_like(mask_block) - mask_block)))[-self.coo_nnz:]] = 1
+                self.mask[i*self.pattern_shape[0]:(i+1)*self.pattern_shape[0],
+                          j*self.pattern_shape[1]:(j+1)*self.pattern_shape[1]] = mask_block.reshape(self.pattern_shape)
         return(Parameter(torch.from_numpy(self.mask)))
 
     def update(self, dense_features):
         self.dense_features = dense_features
-        self.mask = Parameter(hcgs.conn_mat(out_features, in_features, block_sizes[:], drop_ratios[:], des))
+        self.mask = Parameter(hcgs.conn_mat(
+            out_features, in_features, block_sizes[:], drop_ratios[:], des))
 
     def read_mat(self, file):
         """ [mat] = read_mat(file_or_fd)

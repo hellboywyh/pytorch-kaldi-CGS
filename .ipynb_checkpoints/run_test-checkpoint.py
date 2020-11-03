@@ -186,7 +186,7 @@ optimizers = optimizer_init(nns, test_config, arch_dict)
 
 # load pre-training model
 for net in nns.keys():
-    pt_file_arch = config[arch_dict[net][0]]['arch_pretrain_file']
+    pt_file_arch = test_config[arch_dict[net][0]]['arch_pretrain_file']
     print(pt_file_arch)
     if pt_file_arch != 'none':
         checkpoint_load = torch.load(pt_file_arch)
@@ -202,8 +202,8 @@ pattern_shape = list(map(int, config['pattern']['pattern_shape'].split(',')))
 pattern_nnz = int(config['pattern']['pattern_nnz'])
 
 if if_pattern_prun:
-#     nns = pattern_prun_model(
-#         nns, pattern_num, pattern_shape, pattern_nnz, if_pattern_prun=True)
+    nns = pattern_prun_model(
+        nns, pattern_num, pattern_shape, pattern_nnz, if_pattern_prun=True)
     # save pattern pruned model
     for net in nns.keys():
         checkpoint = {}
@@ -212,7 +212,7 @@ if if_pattern_prun:
 
         out_file = info_file.replace(
             '.info', f'_{arch_dict[net][0]}_{pattern_num}_{pattern_shape[0]}x{pattern_shape[1]}_{pattern_nnz}_pattern.pkl')
-#         out_file = config_test[arch_dict[net][0]]['arch_pretrain_file']
+#         out_file = test_config[arch_dict[net][0]]['arch_pretrain_file']
         print(out_file)
         torch.save(checkpoint, out_file)
 
@@ -241,8 +241,9 @@ for forward_data in forward_data_lst:
         out_folder, forward_data, ep, N_ep_str_format, 'forward')
     N_ck_str_format = '0' + \
         str(int(max(math.ceil(np.log10(N_ck_forward)), 1))) + 'd'
-
-    for ck in range(N_ck_forward):
+    print("N_ck_forward:",N_ck_forward)
+#     for ck in range(N_ck_forward):
+    for ck in range(1):
 
         if not is_production:
             print('Testing %s chunk = %i / %i' %
