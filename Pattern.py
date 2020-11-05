@@ -4,8 +4,8 @@ version:
 Author: Wang Yanhong
 email: 284520535@qq.com
 Date: 2020-10-20 06:22:15
-LastEditors: Wang Yanhong
-LastEditTime: 2020-11-03 09:26:17
+LastEditors: Please set LastEditors
+LastEditTime: 2020-11-04 05:23:49
 '''
 
 import math
@@ -149,6 +149,46 @@ class Pattern(Module):
         finally:
             fd.close()
         return mat
+
+
+    def update_pattern_by_weight(self, input, prune_perc):
+        assert self.dense_features.shape[0] % self.pattern_shape[
+            0] == 0, f'Error:{self.dense_features.shape[0]} can not be divisible by {self.pattern_shape[0]}'
+        assert self.dense_features.shape[1] % self.pattern_shape[
+            1] == 0, f'Error:{self.dense_features.shape[1]} can not be divisible by {self.pattern_shape[1]}'
+        row_block_num = self.dense_features.shape[0]//self.pattern_shape[0]
+        col_block_num = self.dense_features.shape[1]//self.pattern_shape[1]
+        pattern_candidates = list()
+        pattern_scores = list()
+        pattern_len = self.pattern_shape[0]*self.pattern_shape[1]
+        for i in range(pattern_len):
+            for j in range(pattern_len):
+                if not i==j:
+                    pattern = torch.zeros(self.pattern_shape).flatten()
+                    pattern[i] = 1
+                    pattern[j] = 1
+                    pattern_score = cal_pattern_score(input, pattern)
+                    pattern_candidates.append(pattern)
+                    pattern_scores.append(pattern_score)
+        sorted_patterns = sorted(pattern_candidates, key=lambda i:pattern_scores[i], reverse=True)
+
+    def cal_pattern_score(self, input, pattern):
+        pattern_score = 0 
+        assert self.dense_features.shape[0] % self.pattern_shape[
+            0] == 0, f'Error:{self.dense_features.shape[0]} can not be divisible by {self.pattern_shape[0]}'
+        assert self.dense_features.shape[1] % self.pattern_shape[
+            1] == 0, f'Error:{self.dense_features.shape[1]} can not be divisible by {self.pattern_shape[1]}'
+        row_block_num = self.dense_features.shape[0]//self.pattern_shape[0]
+        col_block_num = self.dense_features.shape[1]//self.pattern_shape[1]
+        for i in range(row_block_num):
+            for j in range(col_block_num):
+                pattern_score += pattern * input[i*self.pattern_shape[0]:(i+1)*self.pattern_shape[0],
+                                                           j*self.pattern_shape[1]:(j+1)*self.pattern_shape[1]].flatten()
+        return pattern_score
+
+
+    def update_mask(self):
+        pass
 
 # for i in range(16):
 #     mask = np.zeros(64)

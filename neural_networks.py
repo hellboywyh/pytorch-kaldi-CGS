@@ -995,6 +995,26 @@ class LSTM(nn.Module):
                 current_input = 2 * self.lstm_lay[i]
             else:
                 current_input = self.lstm_lay[i]
+    
+    def update_pattern_mask(self):
+        for i in range(self.N_lstm_lay):
+            self.ghcgs_wfx[i].update_pattern_by_weight(self.prune_perc[i])
+            self.ghcgs_wix[i].update_pattern_by_weight(self.prune_perc[i])
+            self.ghcgs_wox[i].update_pattern_by_weight(self.prune_perc[i])
+            self.ghcgs_wcx[i].update_pattern_by_weight(self.prune_perc[i])
+            self.ghcgs_ufh[i].update_pattern_by_weight(self.prune_perc[i])
+            self.ghcgs_uih[i].update_pattern_by_weight(self.prune_perc[i])
+            self.ghcgs_uoh[i].update_pattern_by_weight(self.prune_perc[i])
+            self.ghcgs_uch[i].update_pattern_by_weight(self.prune_perc[i])
+
+            self.ghcgs_wfx[i].update_mask(self.prune_perc[i])
+            self.ghcgs_wix[i].update_mask(self.prune_perc[i])
+            self.ghcgs_wox[i].update_mask(self.prune_perc[i])
+            self.ghcgs_wcx[i].update_mask(self.prune_perc[i])
+            self.ghcgs_ufh[i].update_mask(self.prune_perc[i])
+            self.ghcgs_uih[i].update_mask(self.prune_perc[i])
+            self.ghcgs_uoh[i].update_mask(self.prune_perc[i])
+            self.ghcgs_uch[i].update_mask(self.prune_perc[i])
 
         return 20.0
 
