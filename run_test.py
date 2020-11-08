@@ -87,7 +87,7 @@ module = importlib.import_module('core')
 run_nn = getattr(module, run_nn_script)
 
 # Splitting data into chunks (see out_folder/additional_files)
-create_lists(config)
+create_lists(config) 
 
 # Writing the config files
 create_configs(config)
@@ -96,8 +96,8 @@ print("- Chunk creation......OK!\n")
 
 # create res_file
 res_file_path = out_folder + '/res.res'
-res_file = open(res_file_path, "w")
-res_file.close()
+# res_file = open(res_file_path, "w")
+# res_file.close()
 
 # Learning rates and architecture-specific optimization parameters
 arch_lst = get_all_archs(config)
@@ -260,8 +260,8 @@ for forward_data in forward_data_lst:
             ck, N_ck_str_format) + '.cfg'
 
         # Do forward if the chunk was not already processed
-        # if not (os.path.exists(info_file)):
-        if True:
+        if not (os.path.exists(info_file)):
+        # if True:
             # Doing forward
 
             # getting the next chunk
@@ -362,11 +362,11 @@ for data in forward_data_lst:
                     config_dec_file) + ' ' + out_dec_folder + ' \"' + files_dec + '\"'
                 run_shell(cmd_decode, log_file)
 
-                # remove ark files if needed
-                if not forward_save_files[k]:
-                    list_rem = glob.glob(files_dec)
-                    for rem_ark in list_rem:
-                        os.remove(rem_ark)
+                # # remove ark files if needed
+                # if not forward_save_files[k]:
+                #     list_rem = glob.glob(files_dec)
+                #     for rem_ark in list_rem:
+                #         os.remove(rem_ark)
 
             # Print WER results and write info file
             cmd_res = './check_res_dec.sh ' + out_dec_folder

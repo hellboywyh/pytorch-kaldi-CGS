@@ -1,6 +1,9 @@
 # Ignore temporary python files / dirs
 *.pyc
 __pycache__
+*.pkl
 
 # Ignore user-generated exp directories
 exp
+cfg
+train_scripts

@@ -113,7 +113,6 @@ def run_nn(data_name, data_set, data_end_index, fea_dict, lab_dict, arch_dict, c
     # pre-training
     for net in nns.keys():
         pt_file_arch = config[arch_dict[net][0]]['arch_pretrain_file']
-
         if pt_file_arch != 'none':
             checkpoint_load = torch.load(pt_file_arch)
             nns[net].load_state_dict(checkpoint_load['model_par'])

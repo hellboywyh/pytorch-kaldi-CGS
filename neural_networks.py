@@ -185,7 +185,7 @@ class MLP(nn.Module):
 
             # Masks
             if self.prune:
-                # self.mask_wx.append(torch.randn(current_input, self.dnn_lay[i]))
+                self.mask_wx.append(torch.randn(current_input, self.dnn_lay[i]))
                 self.mask_wx.append(torch.ones(current_input, self.dnn_lay[i]))
 
             add_bias = True
@@ -255,7 +255,7 @@ class MLP(nn.Module):
 
             # Applying Pruning mask
             if self.prune:
-                self.mask_wx[i] = prune(self.wx[i], self.prune_perc[i])
+                # self.mask_wx[i] = prune(self.wx[i], self.prune_perc[i])
                 self.wx[i].weight.data.mul_(self.mask_wx[i][0].data)
 
             if self.save_mat:

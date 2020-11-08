@@ -92,8 +92,8 @@ print("- Chunk creation......OK!\n")
 
 # create res_file
 res_file_path = out_folder + '/res.res'
-res_file = open(res_file_path, "w")
-res_file.close()
+# res_file = open(res_file_path, "w")
+# res_file.close()
 
 # Learning rates and architecture-specific optimization parameters
 arch_lst = get_all_archs(config)
@@ -281,7 +281,8 @@ for ep in range(N_ep):
                                                                                               lab_dict, arch_dict,
                                                                                               config_chunk_file,
                                                                                               processed_first,
-                                                                                              next_config_file)
+                                                                                              next_config_file,
+                                                                                              if_prune = True)
 
                 # update the first_processed variable
                 processed_first = False
@@ -371,7 +372,8 @@ for forward_data in forward_data_lst:
                                                                                           lab_dict, arch_dict,
                                                                                           config_chunk_file,
                                                                                           processed_first,
-                                                                                          next_config_file)
+                                                                                          next_config_file,
+                                                                                          )
 
             # update the first_processed variable
             processed_first = False
