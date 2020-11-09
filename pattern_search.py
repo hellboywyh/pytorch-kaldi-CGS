@@ -5,7 +5,7 @@ Author: Wang Yanhong
 email: 284520535@qq.com
 Date: 2020-10-20 06:22:02
 LastEditors: Please set LastEditors
-LastEditTime: 2020-11-08 09:39:08
+LastEditTime: 2020-11-08 12:41:29
 '''
 
 import numpy as np
@@ -44,6 +44,12 @@ def pattern_coding(nns, outfolder, pattern_num, pattern_shape, prun_pattern_num=
         all_cnt = 0
         for i, name in enumerate(name_list):
             raw_w = para_list[i]
+            if raw_w.size(1)==440:
+                pattern_shape = [64,8]
+            elif raw_w.size(0)==48 or raw_w.size(0)==1928:
+                pattern_shape = [8,64]
+            else:
+                pattern_shape = [16,32]
             patterns, pattern_match_num, pattern_coo_nnz, pattern_nnz, pattern_inner_nnz = \
                 sparsity.find_pattern_by_similarity(
                     raw_w, pattern_num, pattern_shape, sparsity_rate, coo_threshold)
