@@ -1,5 +1,5 @@
 ##########################################################
-# pytorch-kaldi v.0.1                                      
+# pytorch-kaldi v.0.1
 # Mirco Ravanelli, Titouan Parcollet
 # Mila, University of Montreal
 # October 2018
@@ -18,12 +18,13 @@ from HCGS import HCGS as HCGS
 from HCGS import guidedHCGS as guidedHCGS
 from quantized_modules import BinarizeLinear, QuantizeLinear, Quantize, QuantizeVar, prune
 from Pattern import Pattern
-
+from sparsity import sparsity
 from data_io import write_mat, open_or_fd
 # uncomment below if you want to use SRU
 # and you need to install SRU: pip install sru[cuda].
 # or you can install it from source code: https://github.com/taolei87/sru.
 # import sru
+
 
 def hsigmoid(x):
     """
@@ -73,7 +74,8 @@ def act_fun(act_type):
         return nn.LogSoftmax(dim=1)
 
     if act_type == "linear":
-        return nn.LeakyReLU(1)  # initializzed like this, but not used in forward!
+        # initializzed like this, but not used in forward!
+        return nn.LeakyReLU(1)
 
 
 class MLP(nn.Module):
@@ -83,10 +85,13 @@ class MLP(nn.Module):
         self.input_dim = inp_dim
         self.dnn_lay = list(map(int, options['dnn_lay'].split(',')))
         self.dnn_drop = list(map(float, options['dnn_drop'].split(',')))
-        self.dnn_use_batchnorm = list(map(strtobool, options['dnn_use_batchnorm'].split(',')))
-        self.dnn_use_laynorm = list(map(strtobool, options['dnn_use_laynorm'].split(',')))
+        self.dnn_use_batchnorm = list(
+            map(strtobool, options['dnn_use_batchnorm'].split(',')))
+        self.dnn_use_laynorm = list(
+            map(strtobool, options['dnn_use_laynorm'].split(',')))
         self.dnn_use_laynorm_inp = strtobool(options['dnn_use_laynorm_inp'])
-        self.dnn_use_batchnorm_inp = strtobool(options['dnn_use_batchnorm_inp'])
+        self.dnn_use_batchnorm_inp = strtobool(
+            options['dnn_use_batchnorm_inp'])
         self.dnn_act = options['dnn_act'].split(',')
         self.to_do = options['to_do']
 
@@ -100,21 +105,25 @@ class MLP(nn.Module):
         self.mlp_quant_inp = strtobool(options['mlp_quant_inp'])
         self.inp_quant = list(map(int, options['inp_quant'].split(',')))
         self.prune = strtobool(options['mlp_prune'])
-        self.prune_perc = list(map(float, options['mlp_prune_perc'].split(',')))
+        self.prune_perc = list(
+            map(float, options['mlp_prune_perc'].split(',')))
         self.skip_regularization = strtobool(options['skip_regularization'])
 
         self.guided_hcgs = strtobool(options['guided_hcgs'])
         self.apply_guided_hcgs = strtobool(options['apply_guided_hcgs'])
 
-        if 'mlp_pattern' in options:
-            self.mlp_pattern = strtobool(options['mlp_pattern'])
+        if 'if_pattern' in options:
+            self.if_pattern = strtobool(options['if_pattern'])
             # self.sparse_mode = options['sparse_mode']
             self.pattern_mode = options['pattern_mode']
-            self.pattern_shape = list(map(int, options['pattern_shape'].split(',')))
-            self.pattern_nnz = list(map(int, options['pattern_nnz'].split(',')))
-            self.pattern_num = list(map(int, options['pattern_num'].split(',')))
+            self.pattern_shape = list(
+                map(int, options['pattern_shape'].split(',')))
+            self.pattern_nnz = list(
+                map(int, options['pattern_nnz'].split(',')))
+            self.pattern_num = list(
+                map(int, options['pattern_num'].split(',')))
         else:
-            self.mlp_pattern = False
+            self.if_pattern = False
 
         if "pattern_from_file" in options.keys():
             self.pattern_from_file = options['pattern_from_file']
@@ -147,9 +156,9 @@ class MLP(nn.Module):
             self.ghcgs = nn.ModuleList([])
 
         # List of Pattern masks
-        if self.mlp_pattern:
-            self.pat = nn.ModuleList([])
-
+        if self.if_pattern:
+            self.pattern = []
+            self.pattern_mask = []
 
         # List of prune mask
         if self.prune:
@@ -185,7 +194,7 @@ class MLP(nn.Module):
 
             # Masks
             if self.prune:
-#                 self.mask_wx.append(torch.randn(current_input, self.dnn_lay[i]))
+                # self.mask_wx.append(torch.randn(current_input, self.dnn_lay[i]))
                 self.mask_wx.append(torch.ones(current_input, self.dnn_lay[i]))
 
             add_bias = True
@@ -207,24 +216,27 @@ class MLP(nn.Module):
                     self.wx.append(QuantizeLinear(current_input, self.dnn_lay[i], self.param_quant[i], bias=add_bias,
                                                   if_forward=self.final_quant))
             else:
-                self.wx.append(nn.Linear(current_input, self.dnn_lay[i], bias=add_bias))
+                self.wx.append(
+                    nn.Linear(current_input, self.dnn_lay[i], bias=add_bias))
 
             # HCGS of Feed-forward connections
             if self.mlp_hcgs:
                 self.hcgs.append(
                     HCGS(current_input, self.dnn_lay[i], self.hcgs_block, self.hcgs_sparse, str(i) + '_' + self.arch_name))
             # Pattern of Feed-forward connections
-            if self.mlp_pattern:
-                self.pat.append(
-                        Pattern(self.wx[i].weight.data, self.pattern_mode, self.pattern_shape,self.pattern_nnz[i],self.pattern_num[i],str(i) + '_x_' + self.arch_name, self.pattern_from_file))
+            # if self.if_pattern:
+            #     self.pattern_mask.append(torch.ones(self.wx[i].weight.size()))
+                # self.pat.append(
+                #     Pattern(self.wx[i].weight.data, self.pattern_mode, self.pattern_shape, self.pattern_nnz[i], self.pattern_num[i], str(i) + '_x_' + self.arch_name, self.pattern_from_file))
 
-            # weight initialization
+                # weight initialization
             self.wx[i].weight = torch.nn.Parameter(torch.Tensor(self.dnn_lay[i], current_input).uniform_(
                 -np.sqrt(0.01 / (current_input + self.dnn_lay[i])), np.sqrt(0.01 / (current_input + self.dnn_lay[i]))))
             self.wx[i].bias = torch.nn.Parameter(torch.zeros(self.dnn_lay[i]))
 
             if self.guided_hcgs:
-                self.ghcgs.append(guidedHCGS(current_input, self.dnn_lay[i], self.hcgs_block, self.hcgs_sparse, self.wx[i].weight.data, str(i) + '_wx_' + self.arch_name))
+                self.ghcgs.append(guidedHCGS(
+                    current_input, self.dnn_lay[i], self.hcgs_block, self.hcgs_sparse, self.wx[i].weight.data, str(i) + '_wx_' + self.arch_name))
 
             current_input = self.dnn_lay[i]
 
@@ -250,8 +262,15 @@ class MLP(nn.Module):
                 self.wx[i].weight.data.mul_(self.ghcgs[i].mask.data)
 
             # Applying Pattern mask
-            if self.mlp_pattern:
-                self.wx[i].weight.data.mul_(self.pat[i].mask.data)
+            if self.if_pattern:
+                if self.pattern == []:
+                    self.update_patterns()
+                    # pass
+                # if self.to_do == 'train':
+                if self.pattern_mask == []:
+                    self.update_mask()
+                    # pass
+                self.update_weight()
 
             # Applying Pruning mask
             if self.prune:
@@ -259,21 +278,28 @@ class MLP(nn.Module):
                 self.wx[i].weight.data.mul_(self.mask_wx[i][0].data)
 
             if self.save_mat:
-                save_cgs_mat.save_mat(self.wx[i].weight.data, str(i) + '_w_' + self.arch_name, self.param_sav)
+                save_cgs_mat.save_mat(self.wx[i].weight.data, str(
+                    i) + '_w_' + self.arch_name, self.param_sav)
                 if self.mlp_hcgs:
-                    save_cgs_mat.save_hcgs_mat(self.hcgs[i].mask.data, str(i) + '_' + self.arch_name, self.param_sav)
+                    save_cgs_mat.save_hcgs_mat(self.hcgs[i].mask.data, str(
+                        i) + '_' + self.arch_name, self.param_sav)
                 if self.guided_hcgs and self.apply_guided_hcgs:
-                    save_cgs_mat.save_hcgs_mat(self.ghcgs[i].mask.data, str(i) + '_' + self.arch_name, self.param_sav)
-                if self.mlp_pattern:
-                    save_cgs_mat.save_hcgs_mat(self.pat[i].mask.data, str(i) + '_' + self.arch_name, self.param_sav)
+                    save_cgs_mat.save_hcgs_mat(self.ghcgs[i].mask.data, str(
+                        i) + '_' + self.arch_name, self.param_sav)
+                if self.if_pattern:
+                    save_cgs_mat.save_hcgs_mat(self.pattern_mask[i].data, str(
+                        i) + '_' + self.arch_name, self.param_sav)
                 if self.prune:
-                    save_cgs_mat.save_hcgs_mat(self.mask_wx[i][0].data, str(i) + '_' + self.arch_name, self.param_sav)
+                    save_cgs_mat.save_hcgs_mat(self.mask_wx[i][0].data, str(
+                        i) + '_' + self.arch_name, self.param_sav)
                 if i == (self.N_dnn_lay - 1):
                     self.save_mat = False
 
             if self.final_quant and self.mlp_quant:
-                wx_data = Quantize(self.wx[i].weight.data, numBits=self.param_quant[i], if_forward=self.final_quant)
-                save_cgs_mat.save_mat(wx_data, str(i) + '_w_q_' + self.arch_name, self.param_sav)
+                wx_data = Quantize(
+                    self.wx[i].weight.data, numBits=self.param_quant[i], if_forward=self.final_quant)
+                save_cgs_mat.save_mat(wx_data, str(
+                    i) + '_w_q_' + self.arch_name, self.param_sav)
                 if i == (self.N_dnn_lay - 1):
                     self.final_quant = False
 
@@ -284,7 +310,8 @@ class MLP(nn.Module):
                 x = self.drop[i](self.act[i](self.bn[i](self.wx[i](x))))
 
             if self.dnn_use_batchnorm[i] == True and self.dnn_use_laynorm[i] == True:
-                x = self.drop[i](self.act[i](self.bn[i](self.ln[i](self.wx[i](x)))))
+                x = self.drop[i](self.act[i](
+                    self.bn[i](self.ln[i](self.wx[i](x)))))
 
             if self.dnn_use_batchnorm[i] == False and self.dnn_use_laynorm[i] == False:
                 x = self.drop[i](self.act[i](self.wx[i](x)))
@@ -295,7 +322,6 @@ class MLP(nn.Module):
 
         for i in range(self.N_dnn_lay):
             self.mask_wx[i] = prune(self.wx[i], self.prune_perc[0])
-
             self.wx[i].weight.data.mul_(self.mask_wx[i][0].data)
 
         return 1
@@ -304,10 +330,35 @@ class MLP(nn.Module):
 
         current_input = self.input_dim
         for i in range(self.N_dnn_lay):
-            self.ghcgs[i].mask.data = guided_hcgs.conn_mat(self.dnn_lay[i], current_input, self.hcgs_block[:], self.hcgs_sparse[:], self.wx[i].weight.data, str(i) + '_wx_' + self.arch_name)
+            self.ghcgs[i].mask.data = guided_hcgs.conn_mat(
+                self.dnn_lay[i], current_input, self.hcgs_block[:], self.hcgs_sparse[:], self.wx[i].weight.data, str(i) + '_wx_' + self.arch_name)
             current_input = self.dnn_lay[i]
 
         return 20.0
+
+    def update_patterns(self):
+        print("update_patterns",{self.arch_name})
+        for i in range(self.N_dnn_lay):
+            if len(self.pattern) < i + 1:
+                self.pattern.append(sparsity.find_top_k_by_kmeans(
+                    self.wx[i].weight, self.pattern_num[i], self.pattern_shape, self.pattern_nnz[i], self.pattern_shape))
+            else:
+                self.pattern[i] = sparsity.find_top_k_by_kmeans(
+                    self.wx[i].weight, self.pattern_num[i], self.pattern_shape, self.pattern_nnz[i], self.pattern_shape)
+        return 1
+
+    def update_mask(self):
+        for i in range(self.N_dnn_lay):
+            if len(self.pattern_mask) < i + 1:
+                self.pattern_mask.append(sparsity.apply_patterns(self.wx[i].weight, self.pattern[i]))
+            else:
+                self.pattern_mask[i] = sparsity.apply_patterns(self.wx[i].weight, self.pattern[i])
+        return 1
+
+    def update_weight(self):
+        for i in range(self.N_dnn_lay):
+            self.wx[i].weight.data.mul_(self.pattern_mask[i].data)
+        return 1
 
 
 class LSTM_cudnn(nn.Module):
@@ -423,10 +474,13 @@ class LSTM(nn.Module):
         self.input_dim = inp_dim
         self.lstm_lay = list(map(int, options['lstm_lay'].split(',')))
         self.lstm_drop = list(map(float, options['lstm_drop'].split(',')))
-        self.lstm_use_batchnorm = list(map(strtobool, options['lstm_use_batchnorm'].split(',')))
-        self.lstm_use_laynorm = list(map(strtobool, options['lstm_use_laynorm'].split(',')))
+        self.lstm_use_batchnorm = list(
+            map(strtobool, options['lstm_use_batchnorm'].split(',')))
+        self.lstm_use_laynorm = list(
+            map(strtobool, options['lstm_use_laynorm'].split(',')))
         self.lstm_use_laynorm_inp = strtobool(options['lstm_use_laynorm_inp'])
-        self.lstm_use_batchnorm_inp = strtobool(options['lstm_use_batchnorm_inp'])
+        self.lstm_use_batchnorm_inp = strtobool(
+            options['lstm_use_batchnorm_inp'])
         self.lstm_act = options['lstm_act'].split(',')
         self.lstm_orthinit = strtobool(options['lstm_orthinit'])
 
@@ -436,8 +490,10 @@ class LSTM(nn.Module):
         self.lstm_hcgs = strtobool(options['lstm_hcgs'])
         self.hcgsx_block = list(map(int, options['hcgsx_block'].split(',')))
         self.hcgsh_block = list(map(int, options['hcgsh_block'].split(',')))
-        self.hcgsx_sparse = list(map(float, options['hcgsx_sparse'].split(',')))
-        self.hcgsh_sparse = list(map(float, options['hcgsh_sparse'].split(',')))
+        self.hcgsx_sparse = list(
+            map(float, options['hcgsx_sparse'].split(',')))
+        self.hcgsh_sparse = list(
+            map(float, options['hcgsh_sparse'].split(',')))
         self.param_sav = options['out_folder']
 
         self.lstm_quant = strtobool(options['lstm_quant'])
@@ -445,29 +501,33 @@ class LSTM(nn.Module):
         self.lstm_quant_inp = strtobool(options['lstm_quant_inp'])
         self.inp_quant = list(map(int, options['inp_quant'].split(',')))
         self.prune = strtobool(options['lstm_prune'])
-        self.prune_perc = list(map(float, options['lstm_prune_perc'].split(',')))
+        self.prune_perc = list(
+            map(float, options['lstm_prune_perc'].split(',')))
         self.skip_regularization = strtobool(options['skip_regularization'])
 
         self.guided_hcgs = strtobool(options['guided_hcgs'])
         self.apply_guided_hcgs = strtobool(options['apply_guided_hcgs'])
 
         self.if_hsigmoid = strtobool(options['if_hsigmoid'])
-        
-        if 'lstm_pattern' in options:
-            self.lstm_pattern = strtobool(options['lstm_pattern'])
+
+        if 'if_pattern' in options:
+            self.if_pattern = strtobool(options['if_pattern'])
             # self.sparse_mode = options['sparse_mode']
             self.pattern_mode = options['pattern_mode']
-            self.pattern_shape = list(map(int, options['pattern_shape'].split(',')))
-            self.pattern_nnz = list(map(int, options['pattern_nnz'].split(',')))
-            self.pattern_num = list(map(int, options['pattern_num'].split(',')))
+            self.pattern_shape = list(
+                map(int, options['pattern_shape'].split(',')))
+            self.pattern_nnz = list(
+                map(int, options['pattern_nnz'].split(',')))
+            self.pattern_num = list(
+                map(int, options['pattern_num'].split(',')))
         else:
-            self.lstm_pattern = False
-        
+            self.if_pattern = False
+
         if "pattern_from_file" in options.keys():
             self.pattern_from_file = options['pattern_from_file']
         else:
             self.pattern_from_file = False
-        
+
         self.arch_name = options['arch_name']
 
         if self.to_do == 'train':
@@ -504,9 +564,29 @@ class LSTM(nn.Module):
             self.ghcgs_uch = nn.ModuleList([])
 
         # List of Pattern masks
-        if self.lstm_pattern:
-            self.patx = nn.ModuleList([])
-            self.path = nn.ModuleList([])
+        if self.if_pattern:
+            self.pattern = dict()
+            self.pattern_mask = dict()
+
+            # self.patx = nn.ModuleList([])
+            # self.path = nn.ModuleList([])
+            self.pattern["pattern_wfx"] = []
+            self.pattern["pattern_wix"] = []
+            self.pattern["pattern_wox"] = []
+            self.pattern["pattern_wcx"] = []
+            self.pattern["pattern_ufh"] = []
+            self.pattern["pattern_uih"] = []
+            self.pattern["pattern_uoh"] = []
+            self.pattern["pattern_uch"] = []
+
+            self.pattern_mask["pattern_mask_wfx"] = []
+            self.pattern_mask["pattern_mask_wix"] = []
+            self.pattern_mask["pattern_mask_wox"] = []
+            self.pattern_mask["pattern_mask_wcx"] = []
+            self.pattern_mask["pattern_mask_ufh"] = []
+            self.pattern_mask["pattern_mask_uih"] = []
+            self.pattern_mask["pattern_mask_uoh"] = []
+            self.pattern_mask["pattern_mask_uch"] = []
 
         # List of prune masks
         if self.prune:
@@ -576,18 +656,25 @@ class LSTM(nn.Module):
                 # self.mask_wcx.append(torch.randn(current_input, self.lstm_lay[i]))
                 # self.mask_uch.append(torch.randn(current_input, self.lstm_lay[i]))
 
-                self.mask_wfx.append(torch.ones(current_input, self.lstm_lay[i]))
-                self.mask_ufh.append(torch.ones(current_input, self.lstm_lay[i]))
+                self.mask_wfx.append(torch.ones(
+                    current_input, self.lstm_lay[i]))
+                self.mask_ufh.append(torch.ones(
+                    current_input, self.lstm_lay[i]))
 
-                self.mask_wix.append(torch.ones(current_input, self.lstm_lay[i]))
-                self.mask_uih.append(torch.ones(current_input, self.lstm_lay[i]))
+                self.mask_wix.append(torch.ones(
+                    current_input, self.lstm_lay[i]))
+                self.mask_uih.append(torch.ones(
+                    current_input, self.lstm_lay[i]))
 
-                self.mask_wox.append(torch.ones(current_input, self.lstm_lay[i]))
-                self.mask_uoh.append(torch.ones(current_input, self.lstm_lay[i]))
+                self.mask_wox.append(torch.ones(
+                    current_input, self.lstm_lay[i]))
+                self.mask_uoh.append(torch.ones(
+                    current_input, self.lstm_lay[i]))
 
-                self.mask_wcx.append(torch.ones(current_input, self.lstm_lay[i]))
-                self.mask_uch.append(torch.ones(current_input, self.lstm_lay[i]))
-                
+                self.mask_wcx.append(torch.ones(
+                    current_input, self.lstm_lay[i]))
+                self.mask_uch.append(torch.ones(
+                    current_input, self.lstm_lay[i]))
 
             add_bias = True
 
@@ -623,10 +710,14 @@ class LSTM(nn.Module):
                             QuantizeLinear(current_input, self.lstm_lay[i], self.param_quant[i], bias=add_bias,
                                            if_forward=self.final_quant))
                 else:
-                    self.wfx.append(nn.Linear(current_input, self.lstm_lay[i], bias=add_bias))
-                    self.wix.append(nn.Linear(current_input, self.lstm_lay[i], bias=add_bias))
-                    self.wox.append(nn.Linear(current_input, self.lstm_lay[i], bias=add_bias))
-                    self.wcx.append(nn.Linear(current_input, self.lstm_lay[i], bias=add_bias))
+                    self.wfx.append(
+                        nn.Linear(current_input, self.lstm_lay[i], bias=add_bias))
+                    self.wix.append(
+                        nn.Linear(current_input, self.lstm_lay[i], bias=add_bias))
+                    self.wox.append(
+                        nn.Linear(current_input, self.lstm_lay[i], bias=add_bias))
+                    self.wcx.append(
+                        nn.Linear(current_input, self.lstm_lay[i], bias=add_bias))
 
                 # HCGS of Feed-forward connections
                 if self.lstm_hcgs:
@@ -634,16 +725,21 @@ class LSTM(nn.Module):
                         HCGS(current_input, self.lstm_lay[i], self.hcgsx_block, self.hcgsx_sparse, str(i) + '_x_' + self.arch_name))
 
                 if self.guided_hcgs:
-                    self.ghcgs_wfx.append(guidedHCGS(current_input, self.lstm_lay[i], self.hcgsx_block, self.hcgsx_sparse, self.wfx[i].weight.data, str(i) + '_wfx_' + self.arch_name))
-                    self.ghcgs_wix.append(guidedHCGS(current_input, self.lstm_lay[i], self.hcgsx_block, self.hcgsx_sparse, self.wix[i].weight.data, str(i) + '_wix_' + self.arch_name))
-                    self.ghcgs_wox.append(guidedHCGS(current_input, self.lstm_lay[i], self.hcgsx_block, self.hcgsx_sparse, self.wox[i].weight.data, str(i) + '_wox_' + self.arch_name))
-                    self.ghcgs_wcx.append(guidedHCGS(current_input, self.lstm_lay[i], self.hcgsx_block, self.hcgsx_sparse, self.wcx[i].weight.data, str(i) + '_wcx_' + self.arch_name))
+                    self.ghcgs_wfx.append(guidedHCGS(
+                        current_input, self.lstm_lay[i], self.hcgsx_block, self.hcgsx_sparse, self.wfx[i].weight.data, str(i) + '_wfx_' + self.arch_name))
+                    self.ghcgs_wix.append(guidedHCGS(
+                        current_input, self.lstm_lay[i], self.hcgsx_block, self.hcgsx_sparse, self.wix[i].weight.data, str(i) + '_wix_' + self.arch_name))
+                    self.ghcgs_wox.append(guidedHCGS(
+                        current_input, self.lstm_lay[i], self.hcgsx_block, self.hcgsx_sparse, self.wox[i].weight.data, str(i) + '_wox_' + self.arch_name))
+                    self.ghcgs_wcx.append(guidedHCGS(
+                        current_input, self.lstm_lay[i], self.hcgsx_block, self.hcgsx_sparse, self.wcx[i].weight.data, str(i) + '_wcx_' + self.arch_name))
 
                 # Pat of Feed-forward connections
-                if self.lstm_pattern:
-                    self.patx.append(
-                        Pattern(self.wfx[i].weight.data, self.pattern_mode, self.pattern_shape,self.pattern_nnz[i],self.pattern_num[i],str(i) + '_x_' + self.arch_name, self.pattern_from_file))
-                
+                if self.if_pattern:
+                    # self.patx.append(
+                    # Pattern(self.wfx[i].weight.data, self.pattern_mode, self.pattern_shape, self.pattern_nnz[i], self.pattern_num[i], str(i) + '_x_' + self.arch_name, self.pattern_from_file))
+                    pass
+
                 # Recurrent connections
                 # if self.lstm_quant and not self.final_quant:
                 if self.lstm_quant:
@@ -674,10 +770,14 @@ class LSTM(nn.Module):
                             QuantizeLinear(self.lstm_lay[i], self.lstm_lay[i], self.param_quant[i], bias=False,
                                            if_forward=self.final_quant))
                 else:
-                    self.ufh.append(nn.Linear(self.lstm_lay[i], self.lstm_lay[i], bias=False))
-                    self.uih.append(nn.Linear(self.lstm_lay[i], self.lstm_lay[i], bias=False))
-                    self.uoh.append(nn.Linear(self.lstm_lay[i], self.lstm_lay[i], bias=False))
-                    self.uch.append(nn.Linear(self.lstm_lay[i], self.lstm_lay[i], bias=False))
+                    self.ufh.append(
+                        nn.Linear(self.lstm_lay[i], self.lstm_lay[i], bias=False))
+                    self.uih.append(
+                        nn.Linear(self.lstm_lay[i], self.lstm_lay[i], bias=False))
+                    self.uoh.append(
+                        nn.Linear(self.lstm_lay[i], self.lstm_lay[i], bias=False))
+                    self.uch.append(
+                        nn.Linear(self.lstm_lay[i], self.lstm_lay[i], bias=False))
 
                 # HCGS of Recurrent connections
                 if self.lstm_hcgs:
@@ -685,10 +785,10 @@ class LSTM(nn.Module):
                         HCGS(self.lstm_lay[i], self.lstm_lay[i], self.hcgsh_block, self.hcgsh_sparse, str(i) + '_h_' + self.arch_name))
 
                 # Pat of Recurrent connections
-                if self.lstm_pattern:
-                    self.path.append(
-                        Pattern(self.ufh[i].weight.data, self.pattern_mode, self.pattern_shape,self.pattern_nnz[i],self.pattern_num[i],str(i) + '_x_' + self.arch_name, self.pattern_from_file))
-                
+                if self.if_pattern:
+                    # self.path.append(
+                    #     Pattern(self.ufh[i].weight.data, self.pattern_mode, self.pattern_shape, self.pattern_nnz[i], self.pattern_num[i], str(i) + '_x_' + self.arch_name, self.pattern_from_file))
+                    pass
             if self.lstm_orthinit:
                 nn.init.orthogonal_(self.ufh[i].weight)
                 nn.init.orthogonal_(self.uih[i].weight)
@@ -696,10 +796,14 @@ class LSTM(nn.Module):
                 nn.init.orthogonal_(self.uch[i].weight)
 
             if self.guided_hcgs:
-                self.ghcgs_ufh.append(guidedHCGS(self.lstm_lay[i], self.lstm_lay[i], self.hcgsh_block, self.hcgsh_sparse, self.ufh[i].weight.data, str(i) + '_ufh_' + self.arch_name))
-                self.ghcgs_uih.append(guidedHCGS(self.lstm_lay[i], self.lstm_lay[i], self.hcgsh_block, self.hcgsh_sparse, self.uih[i].weight.data, str(i) + '_uih_' + self.arch_name))
-                self.ghcgs_uoh.append(guidedHCGS(self.lstm_lay[i], self.lstm_lay[i], self.hcgsh_block, self.hcgsh_sparse, self.uoh[i].weight.data, str(i) + '_uoh_' + self.arch_name))
-                self.ghcgs_uch.append(guidedHCGS(self.lstm_lay[i], self.lstm_lay[i], self.hcgsh_block, self.hcgsh_sparse, self.uch[i].weight.data, str(i) + '_uch_' + self.arch_name))
+                self.ghcgs_ufh.append(guidedHCGS(self.lstm_lay[i], self.lstm_lay[i], self.hcgsh_block,
+                                                 self.hcgsh_sparse, self.ufh[i].weight.data, str(i) + '_ufh_' + self.arch_name))
+                self.ghcgs_uih.append(guidedHCGS(self.lstm_lay[i], self.lstm_lay[i], self.hcgsh_block,
+                                                 self.hcgsh_sparse, self.uih[i].weight.data, str(i) + '_uih_' + self.arch_name))
+                self.ghcgs_uoh.append(guidedHCGS(self.lstm_lay[i], self.lstm_lay[i], self.hcgsh_block,
+                                                 self.hcgsh_sparse, self.uoh[i].weight.data, str(i) + '_uoh_' + self.arch_name))
+                self.ghcgs_uch.append(guidedHCGS(self.lstm_lay[i], self.lstm_lay[i], self.hcgsh_block,
+                                                 self.hcgsh_sparse, self.uch[i].weight.data, str(i) + '_uch_' + self.arch_name))
 
             # batch norm initialization
             self.bn_wfx.append(nn.BatchNorm1d(self.lstm_lay[i], momentum=0.05))
@@ -737,7 +841,8 @@ class LSTM(nn.Module):
 
             # Drop mask initilization (same mask for all time steps)
             if self.test_flag == False:
-                drop_mask = torch.bernoulli(torch.Tensor(h_init.shape[0], h_init.shape[1]).fill_(1 - self.lstm_drop[i]))
+                drop_mask = torch.bernoulli(torch.Tensor(
+                    h_init.shape[0], h_init.shape[1]).fill_(1 - self.lstm_drop[i]))
             else:
                 drop_mask = torch.FloatTensor([1 - self.lstm_drop[i]])
 
@@ -747,7 +852,7 @@ class LSTM(nn.Module):
 
             # Applying HCGS mask
             if self.lstm_hcgs:
-                # Updating HCGS mask 
+                # Updating HCGS mask
                 ###
 
                 self.wfx[i].weight.data.mul_(self.hcgsx[i].mask.data)
@@ -757,7 +862,7 @@ class LSTM(nn.Module):
 
             # Applying guided HCGS mask
             if self.guided_hcgs and self.apply_guided_hcgs:
-                # # Updating HCGS mask 
+                # # Updating HCGS mask
                 # self.ghcgs_wfx[i].update(self.wfx[i].weight.data)
                 # self.ghcgs_wix[i].update(self.wix[i].weight.data)
                 # self.ghcgs_wox[i].update(self.wox[i].weight.data)
@@ -768,11 +873,15 @@ class LSTM(nn.Module):
                 self.wcx[i].weight.data.mul_(self.ghcgs_wcx[i].mask.data)
 
             # Applying Pattern mask
-            if self.lstm_pattern:
-                self.wfx[i].weight.data.mul_(self.patx[i].mask.data)
-                self.wix[i].weight.data.mul_(self.patx[i].mask.data)
-                self.wox[i].weight.data.mul_(self.patx[i].mask.data)
-                self.wcx[i].weight.data.mul_(self.patx[i].mask.data)
+            if self.if_pattern:
+                if self.pattern["pattern_wfx"] == []:
+                    self.update_patterns()
+                    # pass
+                # if self.to_do == 'train':
+                if self.pattern_mask["pattern_mask_wfx"] == []:
+                    self.update_mask()
+                    # pass
+                self.update_weight()
 
             # Applying Pruning mask
             if self.prune:
@@ -786,38 +895,57 @@ class LSTM(nn.Module):
                 self.wox[i].weight.data.mul_(self.mask_wox[i][0].data)
                 self.wcx[i].weight.data.mul_(self.mask_wcx[i][0].data)
 
-            
             if self.save_mat:
-                save_cgs_mat.save_mat(self.wfx[i].weight.data, str(i) + '_wfx_' + self.arch_name, self.param_sav)
-                save_cgs_mat.save_mat(self.wix[i].weight.data, str(i) + '_wix_' + self.arch_name, self.param_sav)
-                save_cgs_mat.save_mat(self.wox[i].weight.data, str(i) + '_wox_' + self.arch_name, self.param_sav)
-                save_cgs_mat.save_mat(self.wcx[i].weight.data, str(i) + '_wcx_' + self.arch_name, self.param_sav)
+                save_cgs_mat.save_mat(self.wfx[i].weight.data, str(
+                    i) + '_wfx_' + self.arch_name, self.param_sav)
+                save_cgs_mat.save_mat(self.wix[i].weight.data, str(
+                    i) + '_wix_' + self.arch_name, self.param_sav)
+                save_cgs_mat.save_mat(self.wox[i].weight.data, str(
+                    i) + '_wox_' + self.arch_name, self.param_sav)
+                save_cgs_mat.save_mat(self.wcx[i].weight.data, str(
+                    i) + '_wcx_' + self.arch_name, self.param_sav)
                 if self.lstm_hcgs:
-                    save_cgs_mat.save_hcgs_mat(self.hcgsx[i].mask.data, str(i) + '_x_' + self.arch_name, self.param_sav)
+                    save_cgs_mat.save_hcgs_mat(self.hcgsx[i].mask.data, str(
+                        i) + '_x_' + self.arch_name, self.param_sav)
                 if self.guided_hcgs and self.apply_guided_hcgs:
-                    save_cgs_mat.save_hcgs_mat(self.ghcgs_wfx[i].mask.data, str(i) + '_wfx_' + self.arch_name, self.param_sav)
-                    save_cgs_mat.save_hcgs_mat(self.ghcgs_wix[i].mask.data, str(i) + '_wix_' + self.arch_name, self.param_sav)
-                    save_cgs_mat.save_hcgs_mat(self.ghcgs_wox[i].mask.data, str(i) + '_wox_' + self.arch_name, self.param_sav)
-                    save_cgs_mat.save_hcgs_mat(self.ghcgs_wcx[i].mask.data, str(i) + '_wcx_' + self.arch_name, self.param_sav)
-                if self.lstm_pattern:
-                    save_cgs_mat.save_hcgs_mat(self.patx[i].mask.data, str(i) + '_x_' + self.arch_name, self.param_sav)
+                    save_cgs_mat.save_hcgs_mat(self.ghcgs_wfx[i].mask.data, str(
+                        i) + '_wfx_' + self.arch_name, self.param_sav)
+                    save_cgs_mat.save_hcgs_mat(self.ghcgs_wix[i].mask.data, str(
+                        i) + '_wix_' + self.arch_name, self.param_sav)
+                    save_cgs_mat.save_hcgs_mat(self.ghcgs_wox[i].mask.data, str(
+                        i) + '_wox_' + self.arch_name, self.param_sav)
+                    save_cgs_mat.save_hcgs_mat(self.ghcgs_wcx[i].mask.data, str(
+                        i) + '_wcx_' + self.arch_name, self.param_sav)
+                # if self.if_pattern:
+                #     save_cgs_mat.save_hcgs_mat(self.patx[i].mask.data, str(
+                #         i) + '_x_' + self.arch_name, self.param_sav)
                 if self.prune:
-                    save_cgs_mat.save_hcgs_mat(self.mask_wfx[i][0].data, str(i) + '_wfx_' + self.arch_name, self.param_sav)
-                    save_cgs_mat.save_hcgs_mat(self.mask_wix[i][0].data, str(i) + '_wix_' + self.arch_name, self.param_sav)
-                    save_cgs_mat.save_hcgs_mat(self.mask_wox[i][0].data, str(i) + '_wox_' + self.arch_name, self.param_sav)
-                    save_cgs_mat.save_hcgs_mat(self.mask_wcx[i][0].data, str(i) + '_wcx_' + self.arch_name, self.param_sav)
-
+                    save_cgs_mat.save_hcgs_mat(self.mask_wfx[i][0].data, str(
+                        i) + '_wfx_' + self.arch_name, self.param_sav)
+                    save_cgs_mat.save_hcgs_mat(self.mask_wix[i][0].data, str(
+                        i) + '_wix_' + self.arch_name, self.param_sav)
+                    save_cgs_mat.save_hcgs_mat(self.mask_wox[i][0].data, str(
+                        i) + '_wox_' + self.arch_name, self.param_sav)
+                    save_cgs_mat.save_hcgs_mat(self.mask_wcx[i][0].data, str(
+                        i) + '_wcx_' + self.arch_name, self.param_sav)
 
             if self.final_quant and self.lstm_quant:
-                wfx_data = Quantize(self.wfx[i].weight.data, numBits=self.param_quant[i], if_forward=self.final_quant)
-                wix_data = Quantize(self.wix[i].weight.data, numBits=self.param_quant[i], if_forward=self.final_quant)
-                wox_data = Quantize(self.wox[i].weight.data, numBits=self.param_quant[i], if_forward=self.final_quant)
-                wcx_data = Quantize(self.wcx[i].weight.data, numBits=self.param_quant[i], if_forward=self.final_quant)
-                save_cgs_mat.save_mat(wfx_data, str(i) + '_wfx_q_' + self.arch_name, self.param_sav)
-                save_cgs_mat.save_mat(wix_data, str(i) + '_wix_q_' + self.arch_name, self.param_sav)
-                save_cgs_mat.save_mat(wox_data, str(i) + '_wox_q_' + self.arch_name, self.param_sav)
-                save_cgs_mat.save_mat(wcx_data, str(i) + '_wcx_q_' + self.arch_name, self.param_sav)
-
+                wfx_data = Quantize(
+                    self.wfx[i].weight.data, numBits=self.param_quant[i], if_forward=self.final_quant)
+                wix_data = Quantize(
+                    self.wix[i].weight.data, numBits=self.param_quant[i], if_forward=self.final_quant)
+                wox_data = Quantize(
+                    self.wox[i].weight.data, numBits=self.param_quant[i], if_forward=self.final_quant)
+                wcx_data = Quantize(
+                    self.wcx[i].weight.data, numBits=self.param_quant[i], if_forward=self.final_quant)
+                save_cgs_mat.save_mat(wfx_data, str(
+                    i) + '_wfx_q_' + self.arch_name, self.param_sav)
+                save_cgs_mat.save_mat(wix_data, str(
+                    i) + '_wix_q_' + self.arch_name, self.param_sav)
+                save_cgs_mat.save_mat(wox_data, str(
+                    i) + '_wox_q_' + self.arch_name, self.param_sav)
+                save_cgs_mat.save_mat(wcx_data, str(
+                    i) + '_wcx_q_' + self.arch_name, self.param_sav)
 
             # Feed-forward affine transformations (all steps in parallel)
             wfx_out = self.wfx[i](x)
@@ -827,17 +955,25 @@ class LSTM(nn.Module):
 
             # Apply batch norm if needed (all steos in parallel)
             if self.lstm_use_batchnorm[i]:
-                wfx_out_bn = self.bn_wfx[i](wfx_out.view(wfx_out.shape[0] * wfx_out.shape[1], wfx_out.shape[2]))
-                wfx_out = wfx_out_bn.view(wfx_out.shape[0], wfx_out.shape[1], wfx_out.shape[2])
+                wfx_out_bn = self.bn_wfx[i](wfx_out.view(
+                    wfx_out.shape[0] * wfx_out.shape[1], wfx_out.shape[2]))
+                wfx_out = wfx_out_bn.view(
+                    wfx_out.shape[0], wfx_out.shape[1], wfx_out.shape[2])
 
-                wix_out_bn = self.bn_wix[i](wix_out.view(wix_out.shape[0] * wix_out.shape[1], wix_out.shape[2]))
-                wix_out = wix_out_bn.view(wix_out.shape[0], wix_out.shape[1], wix_out.shape[2])
+                wix_out_bn = self.bn_wix[i](wix_out.view(
+                    wix_out.shape[0] * wix_out.shape[1], wix_out.shape[2]))
+                wix_out = wix_out_bn.view(
+                    wix_out.shape[0], wix_out.shape[1], wix_out.shape[2])
 
-                wox_out_bn = self.bn_wox[i](wox_out.view(wox_out.shape[0] * wox_out.shape[1], wox_out.shape[2]))
-                wox_out = wox_out_bn.view(wox_out.shape[0], wox_out.shape[1], wox_out.shape[2])
+                wox_out_bn = self.bn_wox[i](wox_out.view(
+                    wox_out.shape[0] * wox_out.shape[1], wox_out.shape[2]))
+                wox_out = wox_out_bn.view(
+                    wox_out.shape[0], wox_out.shape[1], wox_out.shape[2])
 
-                wcx_out_bn = self.bn_wcx[i](wcx_out.view(wcx_out.shape[0] * wcx_out.shape[1], wcx_out.shape[2]))
-                wcx_out = wcx_out_bn.view(wcx_out.shape[0], wcx_out.shape[1], wcx_out.shape[2])
+                wcx_out_bn = self.bn_wcx[i](wcx_out.view(
+                    wcx_out.shape[0] * wcx_out.shape[1], wcx_out.shape[2]))
+                wcx_out = wcx_out_bn.view(
+                    wcx_out.shape[0], wcx_out.shape[1], wcx_out.shape[2])
 
             # Applying CGS mask
             if self.lstm_hcgs:
@@ -846,12 +982,9 @@ class LSTM(nn.Module):
                 self.uoh[i].weight.data.mul_(self.hcgsh[i].mask.data)
                 self.uch[i].weight.data.mul_(self.hcgsh[i].mask.data)
 
-            # Applying Pattern mask
-            if self.lstm_pattern:
-                self.ufh[i].weight.data.mul_(self.path[i].mask.data)
-                self.uih[i].weight.data.mul_(self.path[i].mask.data)
-                self.uoh[i].weight.data.mul_(self.path[i].mask.data)
-                self.uch[i].weight.data.mul_(self.path[i].mask.data)
+            # # Applying Pattern mask
+            # if self.if_pattern:
+            #     self.update_weight()
 
             # Applying guided HCGS mask
             if self.guided_hcgs and self.apply_guided_hcgs:
@@ -859,7 +992,7 @@ class LSTM(nn.Module):
                 self.uih[i].weight.data.mul_(self.ghcgs_uih[i].mask.data)
                 self.uoh[i].weight.data.mul_(self.ghcgs_uoh[i].mask.data)
                 self.uch[i].weight.data.mul_(self.ghcgs_uch[i].mask.data)
-            
+
             # Applying Pruning mask
             if self.prune:
                 self.mask_ufh[i] = prune(self.ufh[i], self.prune_perc[i])
@@ -872,36 +1005,58 @@ class LSTM(nn.Module):
                 self.uch[i].weight.data.mul_(self.mask_uch[i][0].data)
 
             if self.save_mat:
-                save_cgs_mat.save_mat(self.ufh[i].weight.data, str(i) + '_ufh_' + self.arch_name, self.param_sav)
-                save_cgs_mat.save_mat(self.uih[i].weight.data, str(i) + '_uih_' + self.arch_name, self.param_sav)
-                save_cgs_mat.save_mat(self.uoh[i].weight.data, str(i) + '_uoh_' + self.arch_name, self.param_sav)
-                save_cgs_mat.save_mat(self.uch[i].weight.data, str(i) + '_uch_' + self.arch_name, self.param_sav)
+                save_cgs_mat.save_mat(self.ufh[i].weight.data, str(
+                    i) + '_ufh_' + self.arch_name, self.param_sav)
+                save_cgs_mat.save_mat(self.uih[i].weight.data, str(
+                    i) + '_uih_' + self.arch_name, self.param_sav)
+                save_cgs_mat.save_mat(self.uoh[i].weight.data, str(
+                    i) + '_uoh_' + self.arch_name, self.param_sav)
+                save_cgs_mat.save_mat(self.uch[i].weight.data, str(
+                    i) + '_uch_' + self.arch_name, self.param_sav)
                 if self.lstm_hcgs:
-                    save_cgs_mat.save_hcgs_mat(self.hcgsh[i].mask.data, str(i) + '_h_' + self.arch_name, self.param_sav)
+                    save_cgs_mat.save_hcgs_mat(self.hcgsh[i].mask.data, str(
+                        i) + '_h_' + self.arch_name, self.param_sav)
                 if self.guided_hcgs and self.apply_guided_hcgs:
-                    save_cgs_mat.save_hcgs_mat(self.ghcgs_ufh[i].mask.data, str(i) + '_ufh_' + self.arch_name, self.param_sav)
-                    save_cgs_mat.save_hcgs_mat(self.ghcgs_uih[i].mask.data, str(i) + '_uih_' + self.arch_name, self.param_sav)
-                    save_cgs_mat.save_hcgs_mat(self.ghcgs_uoh[i].mask.data, str(i) + '_uoh_' + self.arch_name, self.param_sav)
-                    save_cgs_mat.save_hcgs_mat(self.ghcgs_uch[i].mask.data, str(i) + '_uch_' + self.arch_name, self.param_sav)
-                if self.lstm_pattern:
-                    save_cgs_mat.save_hcgs_mat(self.path[i].mask.data, str(i) + '_h_' + self.arch_name, self.param_sav)
+                    save_cgs_mat.save_hcgs_mat(self.ghcgs_ufh[i].mask.data, str(
+                        i) + '_ufh_' + self.arch_name, self.param_sav)
+                    save_cgs_mat.save_hcgs_mat(self.ghcgs_uih[i].mask.data, str(
+                        i) + '_uih_' + self.arch_name, self.param_sav)
+                    save_cgs_mat.save_hcgs_mat(self.ghcgs_uoh[i].mask.data, str(
+                        i) + '_uoh_' + self.arch_name, self.param_sav)
+                    save_cgs_mat.save_hcgs_mat(self.ghcgs_uch[i].mask.data, str(
+                        i) + '_uch_' + self.arch_name, self.param_sav)
+                # if self.if_pattern:
+                #     save_cgs_mat.save_hcgs_mat(self.path[i].mask.data, str(
+                #         i) + '_h_' + self.arch_name, self.param_sav)
                 if self.prune:
-                    save_cgs_mat.save_hcgs_mat(self.mask_ufh[i][0].data, str(i) + '_ufh_' + self.arch_name, self.param_sav)
-                    save_cgs_mat.save_hcgs_mat(self.mask_uih[i][0].data, str(i) + '_uih_' + self.arch_name, self.param_sav)
-                    save_cgs_mat.save_hcgs_mat(self.mask_uoh[i][0].data, str(i) + '_uoh_' + self.arch_name, self.param_sav)
-                    save_cgs_mat.save_hcgs_mat(self.mask_uch[i][0].data, str(i) + '_uch_' + self.arch_name, self.param_sav)
+                    save_cgs_mat.save_hcgs_mat(self.mask_ufh[i][0].data, str(
+                        i) + '_ufh_' + self.arch_name, self.param_sav)
+                    save_cgs_mat.save_hcgs_mat(self.mask_uih[i][0].data, str(
+                        i) + '_uih_' + self.arch_name, self.param_sav)
+                    save_cgs_mat.save_hcgs_mat(self.mask_uoh[i][0].data, str(
+                        i) + '_uoh_' + self.arch_name, self.param_sav)
+                    save_cgs_mat.save_hcgs_mat(self.mask_uch[i][0].data, str(
+                        i) + '_uch_' + self.arch_name, self.param_sav)
                 if i == (self.N_lstm_lay - 1):
                     self.save_mat = False
 
             if self.final_quant and self.lstm_quant:
-                ufh_data = Quantize(self.ufh[i].weight.data, numBits=self.param_quant[i], if_forward=self.final_quant)
-                uih_data = Quantize(self.uih[i].weight.data, numBits=self.param_quant[i], if_forward=self.final_quant)
-                uoh_data = Quantize(self.uoh[i].weight.data, numBits=self.param_quant[i], if_forward=self.final_quant)
-                uch_data = Quantize(self.uch[i].weight.data, numBits=self.param_quant[i], if_forward=self.final_quant)
-                save_cgs_mat.save_mat(ufh_data, str(i) + '_ufh_q_' + self.arch_name, self.param_sav)
-                save_cgs_mat.save_mat(uih_data, str(i) + '_uih_q_' + self.arch_name, self.param_sav)
-                save_cgs_mat.save_mat(uoh_data, str(i) + '_uoh_q_' + self.arch_name, self.param_sav)
-                save_cgs_mat.save_mat(uch_data, str(i) + '_uch_q_' + self.arch_name, self.param_sav)
+                ufh_data = Quantize(
+                    self.ufh[i].weight.data, numBits=self.param_quant[i], if_forward=self.final_quant)
+                uih_data = Quantize(
+                    self.uih[i].weight.data, numBits=self.param_quant[i], if_forward=self.final_quant)
+                uoh_data = Quantize(
+                    self.uoh[i].weight.data, numBits=self.param_quant[i], if_forward=self.final_quant)
+                uch_data = Quantize(
+                    self.uch[i].weight.data, numBits=self.param_quant[i], if_forward=self.final_quant)
+                save_cgs_mat.save_mat(ufh_data, str(
+                    i) + '_ufh_q_' + self.arch_name, self.param_sav)
+                save_cgs_mat.save_mat(uih_data, str(
+                    i) + '_uih_q_' + self.arch_name, self.param_sav)
+                save_cgs_mat.save_mat(uoh_data, str(
+                    i) + '_uoh_q_' + self.arch_name, self.param_sav)
+                save_cgs_mat.save_mat(uch_data, str(
+                    i) + '_uch_q_' + self.arch_name, self.param_sav)
                 if i == (self.N_lstm_lay - 1):
                     self.final_quant = False
 
@@ -932,7 +1087,8 @@ class LSTM(nn.Module):
                     it = torch.sigmoid(wix_out[k] + self.uih[i](ht))
                     ot = torch.sigmoid(wox_out[k] + self.uoh[i](ht))
 
-                ct = it * self.act[i](wcx_out[k] + self.uch[i](ht)) * drop_mask + ft * ct
+                ct = it * self.act[i](wcx_out[k] + self.uch[i]
+                                      (ht)) * drop_mask + ft * ct
                 ht = ot * self.act[i](ct)
 
                 if self.lstm_use_laynorm[i]:
@@ -944,11 +1100,10 @@ class LSTM(nn.Module):
             h = torch.stack(hiddens)
             # write_mat("./model_file", open_or_fd("./model_file/hiddens0.mat", "./model_file", "wb"), h.view(h.shape[0]*h.shape[1],h.shape[2]).data.cpu().numpy())
 
-
             # Bidirectional concatenations
             if self.bidir:
                 h_f = h[:, 0:int(x.shape[1] / 2)]
-                h_b = flip(h[:, int(x.shape[1] / 2):x.shape[1]].contiguous(), 0)
+                h_b = flip(h[:, int(x.shape[1] / 2)                             :x.shape[1]].contiguous(), 0)
                 h = torch.cat([h_f, h_b], 2)
 
             # Setup x for the next hidden layer
@@ -983,40 +1138,103 @@ class LSTM(nn.Module):
 
         current_input = self.input_dim
         for i in range(self.N_lstm_lay):
-            self.ghcgs_wfx[i].mask.data = guided_hcgs.conn_mat(self.lstm_lay[i], current_input, self.hcgsx_block[:], self.hcgsx_sparse[:], self.wfx[i].weight.data, str(i) + '_wfx_' + self.arch_name)
-            self.ghcgs_wix[i].mask.data = guided_hcgs.conn_mat(self.lstm_lay[i], current_input, self.hcgsx_block[:], self.hcgsx_sparse[:], self.wix[i].weight.data, str(i) + '_wix_' + self.arch_name)
-            self.ghcgs_wox[i].mask.data = guided_hcgs.conn_mat(self.lstm_lay[i], current_input, self.hcgsx_block[:], self.hcgsx_sparse[:], self.wox[i].weight.data, str(i) + '_wox_' + self.arch_name)
-            self.ghcgs_wcx[i].mask.data = guided_hcgs.conn_mat(self.lstm_lay[i], current_input, self.hcgsx_block[:], self.hcgsx_sparse[:], self.wcx[i].weight.data, str(i) + '_wcx_' + self.arch_name)
-            self.ghcgs_ufh[i].mask.data = guided_hcgs.conn_mat(self.lstm_lay[i], self.lstm_lay[i], self.hcgsh_block[:], self.hcgsh_sparse[:], self.ufh[i].weight.data, str(i) + '_ufh_' + self.arch_name)
-            self.ghcgs_uih[i].mask.data = guided_hcgs.conn_mat(self.lstm_lay[i], self.lstm_lay[i], self.hcgsh_block[:], self.hcgsh_sparse[:], self.uih[i].weight.data, str(i) + '_uih_' + self.arch_name)
-            self.ghcgs_uoh[i].mask.data = guided_hcgs.conn_mat(self.lstm_lay[i], self.lstm_lay[i], self.hcgsh_block[:], self.hcgsh_sparse[:], self.uoh[i].weight.data, str(i) + '_uoh_' + self.arch_name)
-            self.ghcgs_uch[i].mask.data = guided_hcgs.conn_mat(self.lstm_lay[i], self.lstm_lay[i], self.hcgsh_block[:], self.hcgsh_sparse[:], self.uch[i].weight.data, str(i) + '_uch_' + self.arch_name)
+            self.ghcgs_wfx[i].mask.data = guided_hcgs.conn_mat(
+                self.lstm_lay[i], current_input, self.hcgsx_block[:], self.hcgsx_sparse[:], self.wfx[i].weight.data, str(i) + '_wfx_' + self.arch_name)
+            self.ghcgs_wix[i].mask.data = guided_hcgs.conn_mat(
+                self.lstm_lay[i], current_input, self.hcgsx_block[:], self.hcgsx_sparse[:], self.wix[i].weight.data, str(i) + '_wix_' + self.arch_name)
+            self.ghcgs_wox[i].mask.data = guided_hcgs.conn_mat(
+                self.lstm_lay[i], current_input, self.hcgsx_block[:], self.hcgsx_sparse[:], self.wox[i].weight.data, str(i) + '_wox_' + self.arch_name)
+            self.ghcgs_wcx[i].mask.data = guided_hcgs.conn_mat(
+                self.lstm_lay[i], current_input, self.hcgsx_block[:], self.hcgsx_sparse[:], self.wcx[i].weight.data, str(i) + '_wcx_' + self.arch_name)
+            self.ghcgs_ufh[i].mask.data = guided_hcgs.conn_mat(
+                self.lstm_lay[i], self.lstm_lay[i], self.hcgsh_block[:], self.hcgsh_sparse[:], self.ufh[i].weight.data, str(i) + '_ufh_' + self.arch_name)
+            self.ghcgs_uih[i].mask.data = guided_hcgs.conn_mat(
+                self.lstm_lay[i], self.lstm_lay[i], self.hcgsh_block[:], self.hcgsh_sparse[:], self.uih[i].weight.data, str(i) + '_uih_' + self.arch_name)
+            self.ghcgs_uoh[i].mask.data = guided_hcgs.conn_mat(
+                self.lstm_lay[i], self.lstm_lay[i], self.hcgsh_block[:], self.hcgsh_sparse[:], self.uoh[i].weight.data, str(i) + '_uoh_' + self.arch_name)
+            self.ghcgs_uch[i].mask.data = guided_hcgs.conn_mat(
+                self.lstm_lay[i], self.lstm_lay[i], self.hcgsh_block[:], self.hcgsh_sparse[:], self.uch[i].weight.data, str(i) + '_uch_' + self.arch_name)
             if self.bidir:
                 current_input = 2 * self.lstm_lay[i]
             else:
                 current_input = self.lstm_lay[i]
-    
-    def update_pattern_mask(self):
+
+    def update_patterns(self):
+        print("update_patterns",{self.arch_name})
         for i in range(self.N_lstm_lay):
-            self.ghcgs_wfx[i].update_pattern_by_weight(self.prune_perc[i])
-            self.ghcgs_wix[i].update_pattern_by_weight(self.prune_perc[i])
-            self.ghcgs_wox[i].update_pattern_by_weight(self.prune_perc[i])
-            self.ghcgs_wcx[i].update_pattern_by_weight(self.prune_perc[i])
-            self.ghcgs_ufh[i].update_pattern_by_weight(self.prune_perc[i])
-            self.ghcgs_uih[i].update_pattern_by_weight(self.prune_perc[i])
-            self.ghcgs_uoh[i].update_pattern_by_weight(self.prune_perc[i])
-            self.ghcgs_uch[i].update_pattern_by_weight(self.prune_perc[i])
+            if len(self.pattern["pattern_wfx"]) < i + 1:
+                self.pattern["pattern_wfx"].append(sparsity.find_top_k_by_kmeans(self.wfx[i].weight, self.pattern_num[i], self.pattern_shape, self.pattern_nnz[i], self.pattern_shape))
+                self.pattern["pattern_wix"].append(sparsity.find_top_k_by_kmeans(self.wix[i].weight, self.pattern_num[i], self.pattern_shape, self.pattern_nnz[i], self.pattern_shape))
+                self.pattern["pattern_wox"].append(sparsity.find_top_k_by_kmeans(self.wox[i].weight, self.pattern_num[i], self.pattern_shape, self.pattern_nnz[i], self.pattern_shape))
+                self.pattern["pattern_wcx"].append(sparsity.find_top_k_by_kmeans(self.wcx[i].weight, self.pattern_num[i], self.pattern_shape, self.pattern_nnz[i], self.pattern_shape))
+                self.pattern["pattern_ufh"].append(sparsity.find_top_k_by_kmeans(self.ufh[i].weight, self.pattern_num[i], self.pattern_shape, self.pattern_nnz[i], self.pattern_shape))
+                self.pattern["pattern_uih"].append(sparsity.find_top_k_by_kmeans(self.uih[i].weight, self.pattern_num[i], self.pattern_shape, self.pattern_nnz[i], self.pattern_shape))
+                self.pattern["pattern_uoh"].append(sparsity.find_top_k_by_kmeans(self.uoh[i].weight, self.pattern_num[i], self.pattern_shape, self.pattern_nnz[i], self.pattern_shape))
+                self.pattern["pattern_uch"].append(sparsity.find_top_k_by_kmeans(self.uch[i].weight, self.pattern_num[i], self.pattern_shape, self.pattern_nnz[i], self.pattern_shape))
+            else:
+                self.pattern["pattern_wix"][i] = sparsity.find_top_k_by_kmeans(self.wix[i].weight, self.pattern_num[i], self.pattern_shape, self.pattern_nnz[i], self.pattern_shape)
+                self.pattern["pattern_wox"][i] = sparsity.find_top_k_by_kmeans(self.wox[i].weight, self.pattern_num[i], self.pattern_shape, self.pattern_nnz[i], self.pattern_shape)
+                self.pattern["pattern_wcx"][i] = sparsity.find_top_k_by_kmeans(self.wcx[i].weight, self.pattern_num[i], self.pattern_shape, self.pattern_nnz[i], self.pattern_shape)
+                self.pattern["pattern_ufh"][i] = sparsity.find_top_k_by_kmeans(self.ufh[i].weight, self.pattern_num[i], self.pattern_shape, self.pattern_nnz[i], self.pattern_shape)
+                self.pattern["pattern_uih"][i] = sparsity.find_top_k_by_kmeans(self.uih[i].weight, self.pattern_num[i], self.pattern_shape, self.pattern_nnz[i], self.pattern_shape)
+                self.pattern["pattern_uoh"][i] = sparsity.find_top_k_by_kmeans(self.uoh[i].weight, self.pattern_num[i], self.pattern_shape, self.pattern_nnz[i], self.pattern_shape)
+                self.pattern["pattern_uch"][i] = sparsity.find_top_k_by_kmeans(self.uch[i].weight, self.pattern_num[i], self.pattern_shape, self.pattern_nnz[i], self.pattern_shape)
+#             if len(self.pattern["pattern_wfx"]) < i + 1:
+#                 self.pattern["pattern_wfx"].append(sparsity.find_top_k_by_kmeans(self.wfx[i].weight, self.pattern_num[i], self.pattern_shape, self.pattern_nnz[i], self.pattern_shape))
+#                 self.pattern["pattern_wix"].append(self.pattern["pattern_wfx"][i])
+#                 self.pattern["pattern_wox"].append(self.pattern["pattern_wfx"][i])
+#                 self.pattern["pattern_wcx"].append(self.pattern["pattern_wfx"][i])
+#                 self.pattern["pattern_ufh"].append(self.pattern["pattern_wfx"][i])
+#                 self.pattern["pattern_uih"].append(self.pattern["pattern_wfx"][i])
+#                 self.pattern["pattern_uoh"].append(self.pattern["pattern_wfx"][i])
+#                 self.pattern["pattern_uch"].append(self.pattern["pattern_wfx"][i])
+#             else:
+#                 self.pattern["pattern_wix"][i] = sparsity.find_top_k_by_kmeans(self.wix[i].weight, self.pattern_num[i], self.pattern_shape, self.pattern_nnz[i], self.pattern_shape)
+#                 self.pattern["pattern_wix"][i] = (self.pattern["pattern_wfx"][i])
+#                 self.pattern["pattern_wox"][i] = (self.pattern["pattern_wfx"][i])
+#                 self.pattern["pattern_wcx"][i] = (self.pattern["pattern_wfx"][i])
+#                 self.pattern["pattern_ufh"][i] = (self.pattern["pattern_wfx"][i])
+#                 self.pattern["pattern_uih"][i] = (self.pattern["pattern_wfx"][i])
+#                 self.pattern["pattern_uoh"][i] = (self.pattern["pattern_wfx"][i])
+#                 self.pattern["pattern_uch"][i] = (self.pattern["pattern_wfx"][i])
+        return 1
 
-            self.ghcgs_wfx[i].update_mask(self.prune_perc[i])
-            self.ghcgs_wix[i].update_mask(self.prune_perc[i])
-            self.ghcgs_wox[i].update_mask(self.prune_perc[i])
-            self.ghcgs_wcx[i].update_mask(self.prune_perc[i])
-            self.ghcgs_ufh[i].update_mask(self.prune_perc[i])
-            self.ghcgs_uih[i].update_mask(self.prune_perc[i])
-            self.ghcgs_uoh[i].update_mask(self.prune_perc[i])
-            self.ghcgs_uch[i].update_mask(self.prune_perc[i])
+    def update_mask(self):
+        print("update_pattern_masks",{self.arch_name})
+        for i in range(self.N_lstm_lay):
+            if len(self.pattern_mask["pattern_mask_wfx"]) < i + 1:
+                self.pattern_mask["pattern_mask_wfx"].append(sparsity.apply_patterns(self.wfx[i].weight, self.pattern["pattern_wfx"][i]))
+                self.pattern_mask["pattern_mask_wix"].append(sparsity.apply_patterns(self.wix[i].weight, self.pattern["pattern_wix"][i]))
+                self.pattern_mask["pattern_mask_wox"].append(sparsity.apply_patterns(self.wox[i].weight, self.pattern["pattern_wox"][i]))
+                self.pattern_mask["pattern_mask_wcx"].append(sparsity.apply_patterns(self.wcx[i].weight, self.pattern["pattern_wcx"][i]))
+                self.pattern_mask["pattern_mask_ufh"].append(sparsity.apply_patterns(self.ufh[i].weight, self.pattern["pattern_ufh"][i]))
+                self.pattern_mask["pattern_mask_uih"].append(sparsity.apply_patterns(self.uih[i].weight, self.pattern["pattern_uih"][i]))
+                self.pattern_mask["pattern_mask_uoh"].append(sparsity.apply_patterns(self.uoh[i].weight, self.pattern["pattern_uoh"][i]))
+                self.pattern_mask["pattern_mask_uch"].append(sparsity.apply_patterns(self.uch[i].weight, self.pattern["pattern_uch"][i]))
+            else:
+                self.pattern_mask["pattern_mask_wfx"][i] = sparsity.apply_patterns(self.wfx[i].weight, self.pattern["pattern_wfx"][i])
+                self.pattern_mask["pattern_mask_wix"][i] = sparsity.apply_patterns(self.wix[i].weight, self.pattern["pattern_wix"][i])
+                self.pattern_mask["pattern_mask_wox"][i] = sparsity.apply_patterns(self.wox[i].weight, self.pattern["pattern_wox"][i])
+                self.pattern_mask["pattern_mask_wcx"][i] = sparsity.apply_patterns(self.wcx[i].weight, self.pattern["pattern_wcx"][i])
+                self.pattern_mask["pattern_mask_ufh"][i] = sparsity.apply_patterns(self.ufh[i].weight, self.pattern["pattern_ufh"][i])
+                self.pattern_mask["pattern_mask_uih"][i] = sparsity.apply_patterns(self.uih[i].weight, self.pattern["pattern_uih"][i])
+                self.pattern_mask["pattern_mask_uoh"][i] = sparsity.apply_patterns(self.uoh[i].weight, self.pattern["pattern_uoh"][i])
+                self.pattern_mask["pattern_mask_uch"][i] = sparsity.apply_patterns(self.uch[i].weight, self.pattern["pattern_uch"][i])
+        return 1
 
-        return 20.0
+
+    def update_weight(self):
+        print("update_pruned_weight",{self.arch_name})
+        for i in range(self.N_lstm_lay):
+            self.wfx[i].weight.data.mul_(self.pattern_mask["pattern_mask_wfx"][i].data)
+            self.wix[i].weight.data.mul_(self.pattern_mask["pattern_mask_wix"][i].data)
+            self.wox[i].weight.data.mul_(self.pattern_mask["pattern_mask_wox"][i].data)
+            self.wcx[i].weight.data.mul_(self.pattern_mask["pattern_mask_wcx"][i].data)
+            self.ufh[i].weight.data.mul_(self.pattern_mask["pattern_mask_ufh"][i].data)
+            self.uih[i].weight.data.mul_(self.pattern_mask["pattern_mask_uih"][i].data)
+            self.uoh[i].weight.data.mul_(self.pattern_mask["pattern_mask_uoh"][i].data)
+            self.uch[i].weight.data.mul_(self.pattern_mask["pattern_mask_uch"][i].data)
+        return 1
 
 
 class GRU(nn.Module):
@@ -1028,10 +1246,13 @@ class GRU(nn.Module):
         self.input_dim = inp_dim
         self.gru_lay = list(map(int, options['gru_lay'].split(',')))
         self.gru_drop = list(map(float, options['gru_drop'].split(',')))
-        self.gru_use_batchnorm = list(map(strtobool, options['gru_use_batchnorm'].split(',')))
-        self.gru_use_laynorm = list(map(strtobool, options['gru_use_laynorm'].split(',')))
+        self.gru_use_batchnorm = list(
+            map(strtobool, options['gru_use_batchnorm'].split(',')))
+        self.gru_use_laynorm = list(
+            map(strtobool, options['gru_use_laynorm'].split(',')))
         self.gru_use_laynorm_inp = strtobool(options['gru_use_laynorm_inp'])
-        self.gru_use_batchnorm_inp = strtobool(options['gru_use_batchnorm_inp'])
+        self.gru_use_batchnorm_inp = strtobool(
+            options['gru_use_batchnorm_inp'])
         self.gru_orthinit = strtobool(options['gru_orthinit'])
         self.gru_act = options['gru_act'].split(',')
         self.bidir = strtobool(options['gru_bidir'])
@@ -1085,14 +1306,20 @@ class GRU(nn.Module):
                 add_bias = False
 
             # Feed-forward connections
-            self.wh.append(nn.Linear(current_input, self.gru_lay[i], bias=add_bias))
-            self.wz.append(nn.Linear(current_input, self.gru_lay[i], bias=add_bias))
-            self.wr.append(nn.Linear(current_input, self.gru_lay[i], bias=add_bias))
+            self.wh.append(
+                nn.Linear(current_input, self.gru_lay[i], bias=add_bias))
+            self.wz.append(
+                nn.Linear(current_input, self.gru_lay[i], bias=add_bias))
+            self.wr.append(
+                nn.Linear(current_input, self.gru_lay[i], bias=add_bias))
 
             # Recurrent connections
-            self.uh.append(nn.Linear(self.gru_lay[i], self.gru_lay[i], bias=False))
-            self.uz.append(nn.Linear(self.gru_lay[i], self.gru_lay[i], bias=False))
-            self.ur.append(nn.Linear(self.gru_lay[i], self.gru_lay[i], bias=False))
+            self.uh.append(
+                nn.Linear(self.gru_lay[i], self.gru_lay[i], bias=False))
+            self.uz.append(
+                nn.Linear(self.gru_lay[i], self.gru_lay[i], bias=False))
+            self.ur.append(
+                nn.Linear(self.gru_lay[i], self.gru_lay[i], bias=False))
 
             if self.gru_orthinit:
                 nn.init.orthogonal_(self.uh[i].weight)
@@ -1134,7 +1361,8 @@ class GRU(nn.Module):
 
             # Drop mask initilization (same mask for all time steps)
             if self.test_flag == False:
-                drop_mask = torch.bernoulli(torch.Tensor(h_init.shape[0], h_init.shape[1]).fill_(1 - self.gru_drop[i]))
+                drop_mask = torch.bernoulli(torch.Tensor(
+                    h_init.shape[0], h_init.shape[1]).fill_(1 - self.gru_drop[i]))
             else:
                 drop_mask = torch.FloatTensor([1 - self.gru_drop[i]])
 
@@ -1149,14 +1377,20 @@ class GRU(nn.Module):
 
             # Apply batch norm if needed (all steos in parallel)
             if self.gru_use_batchnorm[i]:
-                wh_out_bn = self.bn_wh[i](wh_out.view(wh_out.shape[0] * wh_out.shape[1], wh_out.shape[2]))
-                wh_out = wh_out_bn.view(wh_out.shape[0], wh_out.shape[1], wh_out.shape[2])
+                wh_out_bn = self.bn_wh[i](wh_out.view(
+                    wh_out.shape[0] * wh_out.shape[1], wh_out.shape[2]))
+                wh_out = wh_out_bn.view(
+                    wh_out.shape[0], wh_out.shape[1], wh_out.shape[2])
 
-                wz_out_bn = self.bn_wz[i](wz_out.view(wz_out.shape[0] * wz_out.shape[1], wz_out.shape[2]))
-                wz_out = wz_out_bn.view(wz_out.shape[0], wz_out.shape[1], wz_out.shape[2])
+                wz_out_bn = self.bn_wz[i](wz_out.view(
+                    wz_out.shape[0] * wz_out.shape[1], wz_out.shape[2]))
+                wz_out = wz_out_bn.view(
+                    wz_out.shape[0], wz_out.shape[1], wz_out.shape[2])
 
-                wr_out_bn = self.bn_wr[i](wr_out.view(wr_out.shape[0] * wr_out.shape[1], wr_out.shape[2]))
-                wr_out = wr_out_bn.view(wr_out.shape[0], wr_out.shape[1], wr_out.shape[2])
+                wr_out_bn = self.bn_wr[i](wr_out.view(
+                    wr_out.shape[0] * wr_out.shape[1], wr_out.shape[2]))
+                wr_out = wr_out_bn.view(
+                    wr_out.shape[0], wr_out.shape[1], wr_out.shape[2])
 
             # Processing time steps
             hiddens = []
@@ -1182,7 +1416,8 @@ class GRU(nn.Module):
             # Bidirectional concatenations
             if self.bidir:
                 h_f = h[:, 0:int(x.shape[1] / 2)]
-                h_b = flip(h[:, int(x.shape[1] / 2):x.shape[1]].contiguous(), 0)
+                h_b = flip(h[:, int(x.shape[1] / 2)
+                           :x.shape[1]].contiguous(), 0)
                 h = torch.cat([h_f, h_b], 2)
 
             # Setup x for the next hidden layer
@@ -1200,10 +1435,14 @@ class liGRU(nn.Module):
         self.input_dim = inp_dim
         self.ligru_lay = list(map(int, options['ligru_lay'].split(',')))
         self.ligru_drop = list(map(float, options['ligru_drop'].split(',')))
-        self.ligru_use_batchnorm = list(map(strtobool, options['ligru_use_batchnorm'].split(',')))
-        self.ligru_use_laynorm = list(map(strtobool, options['ligru_use_laynorm'].split(',')))
-        self.ligru_use_laynorm_inp = strtobool(options['ligru_use_laynorm_inp'])
-        self.ligru_use_batchnorm_inp = strtobool(options['ligru_use_batchnorm_inp'])
+        self.ligru_use_batchnorm = list(
+            map(strtobool, options['ligru_use_batchnorm'].split(',')))
+        self.ligru_use_laynorm = list(
+            map(strtobool, options['ligru_use_laynorm'].split(',')))
+        self.ligru_use_laynorm_inp = strtobool(
+            options['ligru_use_laynorm_inp'])
+        self.ligru_use_batchnorm_inp = strtobool(
+            options['ligru_use_batchnorm_inp'])
         self.ligru_orthinit = strtobool(options['ligru_orthinit'])
         self.ligru_act = options['ligru_act'].split(',')
         self.bidir = strtobool(options['ligru_bidir'])
@@ -1253,12 +1492,16 @@ class liGRU(nn.Module):
                 add_bias = False
 
             # Feed-forward connections
-            self.wh.append(nn.Linear(current_input, self.ligru_lay[i], bias=add_bias))
-            self.wz.append(nn.Linear(current_input, self.ligru_lay[i], bias=add_bias))
+            self.wh.append(
+                nn.Linear(current_input, self.ligru_lay[i], bias=add_bias))
+            self.wz.append(
+                nn.Linear(current_input, self.ligru_lay[i], bias=add_bias))
 
             # Recurrent connections
-            self.uh.append(nn.Linear(self.ligru_lay[i], self.ligru_lay[i], bias=False))
-            self.uz.append(nn.Linear(self.ligru_lay[i], self.ligru_lay[i], bias=False))
+            self.uh.append(
+                nn.Linear(self.ligru_lay[i], self.ligru_lay[i], bias=False))
+            self.uz.append(
+                nn.Linear(self.ligru_lay[i], self.ligru_lay[i], bias=False))
 
             if self.ligru_orthinit:
                 nn.init.orthogonal_(self.uh[i].weight)
@@ -1313,11 +1556,15 @@ class liGRU(nn.Module):
 
             # Apply batch norm if needed (all steos in parallel)
             if self.ligru_use_batchnorm[i]:
-                wh_out_bn = self.bn_wh[i](wh_out.view(wh_out.shape[0] * wh_out.shape[1], wh_out.shape[2]))
-                wh_out = wh_out_bn.view(wh_out.shape[0], wh_out.shape[1], wh_out.shape[2])
+                wh_out_bn = self.bn_wh[i](wh_out.view(
+                    wh_out.shape[0] * wh_out.shape[1], wh_out.shape[2]))
+                wh_out = wh_out_bn.view(
+                    wh_out.shape[0], wh_out.shape[1], wh_out.shape[2])
 
-                wz_out_bn = self.bn_wz[i](wz_out.view(wz_out.shape[0] * wz_out.shape[1], wz_out.shape[2]))
-                wz_out = wz_out_bn.view(wz_out.shape[0], wz_out.shape[1], wz_out.shape[2])
+                wz_out_bn = self.bn_wz[i](wz_out.view(
+                    wz_out.shape[0] * wz_out.shape[1], wz_out.shape[2]))
+                wz_out = wz_out_bn.view(
+                    wz_out.shape[0], wz_out.shape[1], wz_out.shape[2])
 
             # Processing time steps
             hiddens = []
@@ -1342,7 +1589,8 @@ class liGRU(nn.Module):
             # Bidirectional concatenations
             if self.bidir:
                 h_f = h[:, 0:int(x.shape[1] / 2)]
-                h_b = flip(h[:, int(x.shape[1] / 2):x.shape[1]].contiguous(), 0)
+                h_b = flip(h[:, int(x.shape[1] / 2)
+                           :x.shape[1]].contiguous(), 0)
                 h = torch.cat([h_f, h_b], 2)
 
             # Setup x for the next hidden layer
@@ -1358,12 +1606,18 @@ class minimalGRU(nn.Module):
 
         # Reading parameters
         self.input_dim = inp_dim
-        self.minimalgru_lay = list(map(int, options['minimalgru_lay'].split(',')))
-        self.minimalgru_drop = list(map(float, options['minimalgru_drop'].split(',')))
-        self.minimalgru_use_batchnorm = list(map(strtobool, options['minimalgru_use_batchnorm'].split(',')))
-        self.minimalgru_use_laynorm = list(map(strtobool, options['minimalgru_use_laynorm'].split(',')))
-        self.minimalgru_use_laynorm_inp = strtobool(options['minimalgru_use_laynorm_inp'])
-        self.minimalgru_use_batchnorm_inp = strtobool(options['minimalgru_use_batchnorm_inp'])
+        self.minimalgru_lay = list(
+            map(int, options['minimalgru_lay'].split(',')))
+        self.minimalgru_drop = list(
+            map(float, options['minimalgru_drop'].split(',')))
+        self.minimalgru_use_batchnorm = list(
+            map(strtobool, options['minimalgru_use_batchnorm'].split(',')))
+        self.minimalgru_use_laynorm = list(
+            map(strtobool, options['minimalgru_use_laynorm'].split(',')))
+        self.minimalgru_use_laynorm_inp = strtobool(
+            options['minimalgru_use_laynorm_inp'])
+        self.minimalgru_use_batchnorm_inp = strtobool(
+            options['minimalgru_use_batchnorm_inp'])
         self.minimalgru_orthinit = strtobool(options['minimalgru_orthinit'])
         self.minimalgru_act = options['minimalgru_act'].split(',')
         self.bidir = strtobool(options['minimalgru_bidir'])
@@ -1413,20 +1667,26 @@ class minimalGRU(nn.Module):
                 add_bias = False
 
             # Feed-forward connections
-            self.wh.append(nn.Linear(current_input, self.minimalgru_lay[i], bias=add_bias))
-            self.wz.append(nn.Linear(current_input, self.minimalgru_lay[i], bias=add_bias))
+            self.wh.append(
+                nn.Linear(current_input, self.minimalgru_lay[i], bias=add_bias))
+            self.wz.append(
+                nn.Linear(current_input, self.minimalgru_lay[i], bias=add_bias))
 
             # Recurrent connections
-            self.uh.append(nn.Linear(self.minimalgru_lay[i], self.minimalgru_lay[i], bias=False))
-            self.uz.append(nn.Linear(self.minimalgru_lay[i], self.minimalgru_lay[i], bias=False))
+            self.uh.append(
+                nn.Linear(self.minimalgru_lay[i], self.minimalgru_lay[i], bias=False))
+            self.uz.append(
+                nn.Linear(self.minimalgru_lay[i], self.minimalgru_lay[i], bias=False))
 
             if self.minimalgru_orthinit:
                 nn.init.orthogonal_(self.uh[i].weight)
                 nn.init.orthogonal_(self.uz[i].weight)
 
             # batch norm initialization
-            self.bn_wh.append(nn.BatchNorm1d(self.minimalgru_lay[i], momentum=0.05))
-            self.bn_wz.append(nn.BatchNorm1d(self.minimalgru_lay[i], momentum=0.05))
+            self.bn_wh.append(nn.BatchNorm1d(
+                self.minimalgru_lay[i], momentum=0.05))
+            self.bn_wz.append(nn.BatchNorm1d(
+                self.minimalgru_lay[i], momentum=0.05))
 
             self.ln.append(LayerNorm(self.minimalgru_lay[i]))
 
@@ -1435,7 +1695,8 @@ class minimalGRU(nn.Module):
             else:
                 current_input = self.minimalgru_lay[i]
 
-        self.out_dim = self.minimalgru_lay[i] + self.bidir * self.minimalgru_lay[i]
+        self.out_dim = self.minimalgru_lay[i] + \
+            self.bidir * self.minimalgru_lay[i]
 
     def forward(self, x):
 
@@ -1473,11 +1734,15 @@ class minimalGRU(nn.Module):
 
             # Apply batch norm if needed (all steos in parallel)
             if self.minimalgru_use_batchnorm[i]:
-                wh_out_bn = self.bn_wh[i](wh_out.view(wh_out.shape[0] * wh_out.shape[1], wh_out.shape[2]))
-                wh_out = wh_out_bn.view(wh_out.shape[0], wh_out.shape[1], wh_out.shape[2])
+                wh_out_bn = self.bn_wh[i](wh_out.view(
+                    wh_out.shape[0] * wh_out.shape[1], wh_out.shape[2]))
+                wh_out = wh_out_bn.view(
+                    wh_out.shape[0], wh_out.shape[1], wh_out.shape[2])
 
-                wz_out_bn = self.bn_wz[i](wz_out.view(wz_out.shape[0] * wz_out.shape[1], wz_out.shape[2]))
-                wz_out = wz_out_bn.view(wz_out.shape[0], wz_out.shape[1], wz_out.shape[2])
+                wz_out_bn = self.bn_wz[i](wz_out.view(
+                    wz_out.shape[0] * wz_out.shape[1], wz_out.shape[2]))
+                wz_out = wz_out_bn.view(
+                    wz_out.shape[0], wz_out.shape[1], wz_out.shape[2])
 
             # Processing time steps
             hiddens = []
@@ -1502,7 +1767,8 @@ class minimalGRU(nn.Module):
             # Bidirectional concatenations
             if self.bidir:
                 h_f = h[:, 0:int(x.shape[1] / 2)]
-                h_b = flip(h[:, int(x.shape[1] / 2):x.shape[1]].contiguous(), 0)
+                h_b = flip(h[:, int(x.shape[1] / 2)
+                           :x.shape[1]].contiguous(), 0)
                 h = torch.cat([h_f, h_b], 2)
 
             # Setup x for the next hidden layer
@@ -1520,10 +1786,13 @@ class RNN(nn.Module):
         self.input_dim = inp_dim
         self.rnn_lay = list(map(int, options['rnn_lay'].split(',')))
         self.rnn_drop = list(map(float, options['rnn_drop'].split(',')))
-        self.rnn_use_batchnorm = list(map(strtobool, options['rnn_use_batchnorm'].split(',')))
-        self.rnn_use_laynorm = list(map(strtobool, options['rnn_use_laynorm'].split(',')))
+        self.rnn_use_batchnorm = list(
+            map(strtobool, options['rnn_use_batchnorm'].split(',')))
+        self.rnn_use_laynorm = list(
+            map(strtobool, options['rnn_use_laynorm'].split(',')))
         self.rnn_use_laynorm_inp = strtobool(options['rnn_use_laynorm_inp'])
-        self.rnn_use_batchnorm_inp = strtobool(options['rnn_use_batchnorm_inp'])
+        self.rnn_use_batchnorm_inp = strtobool(
+            options['rnn_use_batchnorm_inp'])
         self.rnn_orthinit = strtobool(options['rnn_orthinit'])
         self.rnn_act = options['rnn_act'].split(',')
         self.bidir = strtobool(options['rnn_bidir'])
@@ -1569,10 +1838,12 @@ class RNN(nn.Module):
                 add_bias = False
 
             # Feed-forward connections
-            self.wh.append(nn.Linear(current_input, self.rnn_lay[i], bias=add_bias))
+            self.wh.append(
+                nn.Linear(current_input, self.rnn_lay[i], bias=add_bias))
 
             # Recurrent connections
-            self.uh.append(nn.Linear(self.rnn_lay[i], self.rnn_lay[i], bias=False))
+            self.uh.append(
+                nn.Linear(self.rnn_lay[i], self.rnn_lay[i], bias=False))
 
             if self.rnn_orthinit:
                 nn.init.orthogonal_(self.uh[i].weight)
@@ -1610,7 +1881,8 @@ class RNN(nn.Module):
 
             # Drop mask initilization (same mask for all time steps)
             if self.test_flag == False:
-                drop_mask = torch.bernoulli(torch.Tensor(h_init.shape[0], h_init.shape[1]).fill_(1 - self.rnn_drop[i]))
+                drop_mask = torch.bernoulli(torch.Tensor(
+                    h_init.shape[0], h_init.shape[1]).fill_(1 - self.rnn_drop[i]))
             else:
                 drop_mask = torch.FloatTensor([1 - self.rnn_drop[i]])
 
@@ -1623,8 +1895,10 @@ class RNN(nn.Module):
 
             # Apply batch norm if needed (all steos in parallel)
             if self.rnn_use_batchnorm[i]:
-                wh_out_bn = self.bn_wh[i](wh_out.view(wh_out.shape[0] * wh_out.shape[1], wh_out.shape[2]))
-                wh_out = wh_out_bn.view(wh_out.shape[0], wh_out.shape[1], wh_out.shape[2])
+                wh_out_bn = self.bn_wh[i](wh_out.view(
+                    wh_out.shape[0] * wh_out.shape[1], wh_out.shape[2]))
+                wh_out = wh_out_bn.view(
+                    wh_out.shape[0], wh_out.shape[1], wh_out.shape[2])
 
             # Processing time steps
             hiddens = []
@@ -1647,7 +1921,8 @@ class RNN(nn.Module):
             # Bidirectional concatenations
             if self.bidir:
                 h_f = h[:, 0:int(x.shape[1] / 2)]
-                h_b = flip(h[:, int(x.shape[1] / 2):x.shape[1]].contiguous(), 0)
+                h_b = flip(h[:, int(x.shape[1] / 2)
+                           :x.shape[1]].contiguous(), 0)
                 h = torch.cat([h_f, h_b], 2)
 
             # Setup x for the next hidden layer
@@ -1666,15 +1941,19 @@ class CNN(nn.Module):
         self.cnn_N_filt = list(map(int, options['cnn_N_filt'].split(',')))
 
         self.cnn_len_filt = list(map(int, options['cnn_len_filt'].split(',')))
-        self.cnn_max_pool_len = list(map(int, options['cnn_max_pool_len'].split(',')))
+        self.cnn_max_pool_len = list(
+            map(int, options['cnn_max_pool_len'].split(',')))
 
         self.cnn_act = options['cnn_act'].split(',')
         self.cnn_drop = list(map(float, options['cnn_drop'].split(',')))
 
-        self.cnn_use_laynorm = list(map(strtobool, options['cnn_use_laynorm'].split(',')))
-        self.cnn_use_batchnorm = list(map(strtobool, options['cnn_use_batchnorm'].split(',')))
+        self.cnn_use_laynorm = list(
+            map(strtobool, options['cnn_use_laynorm'].split(',')))
+        self.cnn_use_batchnorm = list(
+            map(strtobool, options['cnn_use_batchnorm'].split(',')))
         self.cnn_use_laynorm_inp = strtobool(options['cnn_use_laynorm_inp'])
-        self.cnn_use_batchnorm_inp = strtobool(options['cnn_use_batchnorm_inp'])
+        self.cnn_use_batchnorm_inp = strtobool(
+            options['cnn_use_batchnorm_inp'])
 
         self.N_cnn_lay = len(self.cnn_N_filt)
         self.conv = nn.ModuleList([])
@@ -1714,9 +1993,11 @@ class CNN(nn.Module):
                 self.conv.append(nn.Conv1d(1, N_filt, len_filt))
 
             else:
-                self.conv.append(nn.Conv1d(self.cnn_N_filt[i - 1], self.cnn_N_filt[i], self.cnn_len_filt[i]))
+                self.conv.append(
+                    nn.Conv1d(self.cnn_N_filt[i - 1], self.cnn_N_filt[i], self.cnn_len_filt[i]))
 
-            current_input = int((current_input - self.cnn_len_filt[i] + 1) / self.cnn_max_pool_len[i])
+            current_input = int(
+                (current_input - self.cnn_len_filt[i] + 1) / self.cnn_max_pool_len[i])
 
         self.out_dim = current_input * N_filt
 
@@ -1736,13 +2017,16 @@ class CNN(nn.Module):
         for i in range(self.N_cnn_lay):
 
             if self.cnn_use_laynorm[i]:
-                x = self.drop[i](self.act[i](self.ln[i](F.max_pool1d(self.conv[i](x), self.cnn_max_pool_len[i]))))
+                x = self.drop[i](self.act[i](self.ln[i](
+                    F.max_pool1d(self.conv[i](x), self.cnn_max_pool_len[i]))))
 
             if self.cnn_use_batchnorm[i]:
-                x = self.drop[i](self.act[i](self.bn[i](F.max_pool1d(self.conv[i](x), self.cnn_max_pool_len[i]))))
+                x = self.drop[i](self.act[i](self.bn[i](
+                    F.max_pool1d(self.conv[i](x), self.cnn_max_pool_len[i]))))
 
             if self.cnn_use_batchnorm[i] == False and self.cnn_use_laynorm[i] == False:
-                x = self.drop[i](self.act[i](F.max_pool1d(self.conv[i](x), self.cnn_max_pool_len[i])))
+                x = self.drop[i](self.act[i](F.max_pool1d(
+                    self.conv[i](x), self.cnn_max_pool_len[i])))
 
         x = x.view(batch, -1)
 
@@ -1758,16 +2042,21 @@ class SincNet(nn.Module):
         self.input_dim = inp_dim
         self.sinc_N_filt = list(map(int, options['sinc_N_filt'].split(',')))
 
-        self.sinc_len_filt = list(map(int, options['sinc_len_filt'].split(',')))
-        self.sinc_max_pool_len = list(map(int, options['sinc_max_pool_len'].split(',')))
+        self.sinc_len_filt = list(
+            map(int, options['sinc_len_filt'].split(',')))
+        self.sinc_max_pool_len = list(
+            map(int, options['sinc_max_pool_len'].split(',')))
 
         self.sinc_act = options['sinc_act'].split(',')
         self.sinc_drop = list(map(float, options['sinc_drop'].split(',')))
 
-        self.sinc_use_laynorm = list(map(strtobool, options['sinc_use_laynorm'].split(',')))
-        self.sinc_use_batchnorm = list(map(strtobool, options['sinc_use_batchnorm'].split(',')))
+        self.sinc_use_laynorm = list(
+            map(strtobool, options['sinc_use_laynorm'].split(',')))
+        self.sinc_use_batchnorm = list(
+            map(strtobool, options['sinc_use_batchnorm'].split(',')))
         self.sinc_use_laynorm_inp = strtobool(options['sinc_use_laynorm_inp'])
-        self.sinc_use_batchnorm_inp = strtobool(options['sinc_use_batchnorm_inp'])
+        self.sinc_use_batchnorm_inp = strtobool(
+            options['sinc_use_batchnorm_inp'])
 
         self.N_sinc_lay = len(self.sinc_N_filt)
 
@@ -1814,9 +2103,11 @@ class SincNet(nn.Module):
                              min_band_hz=self.sinc_min_band_hz))
 
             else:
-                self.conv.append(nn.Conv1d(self.sinc_N_filt[i - 1], self.sinc_N_filt[i], self.sinc_len_filt[i]))
+                self.conv.append(
+                    nn.Conv1d(self.sinc_N_filt[i - 1], self.sinc_N_filt[i], self.sinc_len_filt[i]))
 
-            current_input = int((current_input - self.sinc_len_filt[i] + 1) / self.sinc_max_pool_len[i])
+            current_input = int(
+                (current_input - self.sinc_len_filt[i] + 1) / self.sinc_max_pool_len[i])
 
         self.out_dim = current_input * N_filt
 
@@ -1836,13 +2127,16 @@ class SincNet(nn.Module):
         for i in range(self.N_sinc_lay):
 
             if self.sinc_use_laynorm[i]:
-                x = self.drop[i](self.act[i](self.ln[i](F.max_pool1d(self.conv[i](x), self.sinc_max_pool_len[i]))))
+                x = self.drop[i](self.act[i](self.ln[i](
+                    F.max_pool1d(self.conv[i](x), self.sinc_max_pool_len[i]))))
 
             if self.sinc_use_batchnorm[i]:
-                x = self.drop[i](self.act[i](self.bn[i](F.max_pool1d(self.conv[i](x), self.sinc_max_pool_len[i]))))
+                x = self.drop[i](self.act[i](self.bn[i](
+                    F.max_pool1d(self.conv[i](x), self.sinc_max_pool_len[i]))))
 
             if self.sinc_use_batchnorm[i] == False and self.sinc_use_laynorm[i] == False:
-                x = self.drop[i](self.act[i](F.max_pool1d(self.conv[i](x), self.sinc_max_pool_len[i])))
+                x = self.drop[i](self.act[i](F.max_pool1d(
+                    self.conv[i](x), self.sinc_max_pool_len[i])))
 
         x = x.view(batch, -1)
 
@@ -1871,11 +2165,11 @@ class SincConv(nn.Module):
     https://arxiv.org/abs/1808.00158
     """
 
-    @staticmethod
+    @ staticmethod
     def to_mel(hz):
         return 2595 * np.log10(1 + hz / 700)
 
-    @staticmethod
+    @ staticmethod
     def to_hz(mel):
         return 700 * (10 ** (mel / 2595) - 1)
 
@@ -1888,7 +2182,8 @@ class SincConv(nn.Module):
         if in_channels != 1:
             # msg = (f'SincConv only support one input channel '
             #       f'(here, in_channels = {in_channels:d}).')
-            msg = "SincConv only support one input channel (here, in_channels = {%i})" % (in_channels)
+            msg = "SincConv only support one input channel (here, in_channels = {%i})" % (
+                in_channels)
             raise ValueError(msg)
 
         self.out_channels = out_channels
@@ -1929,7 +2224,8 @@ class SincConv(nn.Module):
         # Hamming window
         # self.window_ = torch.hamming_window(self.kernel_size)
         n_lin = torch.linspace(0, self.kernel_size, steps=self.kernel_size)
-        self.window_ = 0.54 - 0.46 * torch.cos(2 * math.pi * n_lin / self.kernel_size);
+        self.window_ = 0.54 - 0.46 * \
+            torch.cos(2 * math.pi * n_lin / self.kernel_size)
 
         # (kernel_size, 1)
         n = (self.kernel_size - 1) / 2
@@ -1941,7 +2237,8 @@ class SincConv(nn.Module):
         y_left = torch.sin(x_left) / x_left
         y_right = torch.flip(y_left, dims=[1])
 
-        sinc = torch.cat([y_left, torch.ones([x.shape[0], 1]).to(x.device), y_right], dim=1)
+        sinc = torch.cat(
+            [y_left, torch.ones([x.shape[0], 1]).to(x.device), y_right], dim=1)
 
         return sinc
 
@@ -1962,7 +2259,8 @@ class SincConv(nn.Module):
         self.window_ = self.window_.to(waveforms.device)
 
         low = self.min_low_hz / self.sample_rate + torch.abs(self.low_hz_)
-        high = low + self.min_band_hz / self.sample_rate + torch.abs(self.band_hz_)
+        high = low + self.min_band_hz / \
+            self.sample_rate + torch.abs(self.band_hz_)
 
         f_times_t = torch.matmul(low, self.n_)
 
@@ -2007,11 +2305,11 @@ class SincConv_fast(nn.Module):
     https://arxiv.org/abs/1808.00158
     """
 
-    @staticmethod
+    @ staticmethod
     def to_mel(hz):
         return 2595 * np.log10(1 + hz / 700)
 
-    @staticmethod
+    @ staticmethod
     def to_hz(mel):
         return 700 * (10 ** (mel / 2595) - 1)
 
@@ -2024,7 +2322,8 @@ class SincConv_fast(nn.Module):
         if in_channels != 1:
             # msg = (f'SincConv only support one input channel '
             #       f'(here, in_channels = {in_channels:d}).')
-            msg = "SincConv only support one input channel (here, in_channels = {%i})" % (in_channels)
+            msg = "SincConv only support one input channel (here, in_channels = {%i})" % (
+                in_channels)
             raise ValueError(msg)
 
         self.out_channels = out_channels
@@ -2066,7 +2365,8 @@ class SincConv_fast(nn.Module):
         # self.window_ = torch.hamming_window(self.kernel_size)
         n_lin = torch.linspace(0, (self.kernel_size / 2) - 1,
                                steps=int((self.kernel_size / 2)))  # computing only half of the window
-        self.window_ = 0.54 - 0.46 * torch.cos(2 * math.pi * n_lin / self.kernel_size);
+        self.window_ = 0.54 - 0.46 * \
+            torch.cos(2 * math.pi * n_lin / self.kernel_size)
 
         # (kernel_size, 1)
         n = (self.kernel_size - 1) / 2.0
@@ -2091,18 +2391,20 @@ class SincConv_fast(nn.Module):
 
         low = self.min_low_hz + torch.abs(self.low_hz_)
 
-        high = torch.clamp(low + self.min_band_hz + torch.abs(self.band_hz_), self.min_low_hz, self.sample_rate / 2)
+        high = torch.clamp(low + self.min_band_hz + torch.abs(self.band_hz_),
+                           self.min_low_hz, self.sample_rate / 2)
         band = (high - low)[:, 0]
 
         f_times_t_low = torch.matmul(low, self.n_)
         f_times_t_high = torch.matmul(high, self.n_)
 
         band_pass_left = ((torch.sin(f_times_t_high) - torch.sin(f_times_t_low)) / (
-                    self.n_ / 2)) * self.window_  # Equivalent of Eq.4 of the reference paper (SPEAKER RECOGNITION FROM RAW WAVEFORM WITH SINCNET). I just have expanded the sinc and simplified the terms. This way I avoid several useless computations.
+            self.n_ / 2)) * self.window_  # Equivalent of Eq.4 of the reference paper (SPEAKER RECOGNITION FROM RAW WAVEFORM WITH SINCNET). I just have expanded the sinc and simplified the terms. This way I avoid several useless computations.
         band_pass_center = 2 * band.view(-1, 1)
         band_pass_right = torch.flip(band_pass_left, dims=[1])
 
-        band_pass = torch.cat([band_pass_left, band_pass_center, band_pass_right], dim=1)
+        band_pass = torch.cat(
+            [band_pass_left, band_pass_center, band_pass_right], dim=1)
 
         band_pass = band_pass / (2 * band[:, None])
 
@@ -2120,7 +2422,7 @@ def flip(x, dim):
     x = x.contiguous()
     x = x.view(-1, *xsize[dim:])
     x = x.view(x.size(0), x.size(1), -1)[:,
-        getattr(torch.arange(x.size(1) - 1, -1, -1), ('cpu', 'cuda')[x.is_cuda])().long(), :]
+                                         getattr(torch.arange(x.size(1) - 1, -1, -1), ('cpu', 'cuda')[x.is_cuda])().long(), :]
     return x.view(xsize)
 
 # class SRU(nn.Module):

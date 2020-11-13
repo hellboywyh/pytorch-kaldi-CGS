@@ -150,6 +150,8 @@ for ep in range(N_ep):
     print('------------------------------ Epoch %s / %s ------------------------------' % (
         format(ep, N_ep_str_format), format(N_ep - 1, N_ep_str_format)))
 
+    patterns = dict()
+    pattern_masks = dict()
     for tr_data in tr_data_lst:
 
         # Compute the total number of chunks for each training epoch
@@ -199,12 +201,13 @@ for ep in range(N_ep):
                     if_prune = False
 
                 # run chunk processing
-                [data_name, data_set, data_end_index, fea_dict, lab_dict, arch_dict] = run_nn(data_name, data_set,
+                [data_name, data_set, data_end_index, fea_dict, lab_dict, arch_dict],patterns, pattern_masks = run_nn(data_name, data_set,
                                                                                               data_end_index, fea_dict,
                                                                                               lab_dict, arch_dict,
                                                                                               config_chunk_file,
                                                                                               processed_first,
-                                                                                              next_config_file, if_prune)
+                                                                                              next_config_file, if_prune,
+                                                                                              patterns, pattern_masks)
 
                 # update the first_processed variable
                 processed_first = False
@@ -257,6 +260,7 @@ for ep in range(N_ep):
 
         for ck in range(N_ck_valid):
 
+            
             # paths of the output files
             info_file = out_folder + '/exp_files/valid_' + valid_data + '_ep' + format(ep,
                                                                                        N_ep_str_format) + '_ck' + format(
@@ -276,13 +280,14 @@ for ep in range(N_ep):
                 next_config_file = cfg_file_list[op_counter]
 
                 # run chunk processing
-                [data_name, data_set, data_end_index, fea_dict, lab_dict, arch_dict] = run_nn(data_name, data_set,
+                [data_name, data_set, data_end_index, fea_dict, lab_dict, arch_dict], patterns, pattern_masks = run_nn(data_name, data_set,
                                                                                               data_end_index, fea_dict,
                                                                                               lab_dict, arch_dict,
                                                                                               config_chunk_file,
                                                                                               processed_first,
                                                                                               next_config_file,
-                                                                                              if_prune = True)
+                                                                                              False,
+                                                                                              patterns, pattern_masks)
 
                 # update the first_processed variable
                 processed_first = False
@@ -333,6 +338,9 @@ for pt_arch in pt_files.keys():
                  '/exp_files/final_' + pt_arch + '.pkl')
 
 # --------FORWARD--------#
+
+patterns = dict()
+pattern_masks = dict()
 for forward_data in forward_data_lst:
 
     # Compute the number of chunks
@@ -367,13 +375,14 @@ for forward_data in forward_data_lst:
             next_config_file = cfg_file_list[op_counter]
 
             # run chunk processing
-            [data_name, data_set, data_end_index, fea_dict, lab_dict, arch_dict] = run_nn(data_name, data_set,
+            [data_name, data_set, data_end_index, fea_dict, lab_dict, arch_dict],patterns, pattern_masks = run_nn(data_name, data_set,
                                                                                           data_end_index, fea_dict,
                                                                                           lab_dict, arch_dict,
                                                                                           config_chunk_file,
                                                                                           processed_first,
                                                                                           next_config_file,
-                                                                                          )
+                                                                                          False,
+                                                                                          patterns, pattern_masks)
 
             # update the first_processed variable
             processed_first = False

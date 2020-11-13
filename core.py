@@ -22,7 +22,7 @@ from utils import shift
 
 
 def run_nn(data_name, data_set, data_end_index, fea_dict, lab_dict, arch_dict, cfg_file, processed_first,
-           next_config_file, if_prune=False, if_apply_ghcgs=False, if_pattern_search=False):
+           next_config_file, if_prune=False, patterns=dict(), pattern_masks=dict(), if_apply_ghcgs=False, if_pattern_search=False):
     # This function processes the current chunk using the information in cfg_file. In parallel, the next chunk is load into the CPU memory
 
     # Reading chunk-specific cfg file (first argument-mandatory file)
@@ -125,6 +125,10 @@ def run_nn(data_name, data_set, data_end_index, fea_dict, lab_dict, arch_dict, c
             prune_ret = nns[net].prune_parameters()
             if prune_ret == 1:
                 print('Testing: Pruning complete of ' + net)
+        #init patterns if needed
+        if net in patterns:
+            nns[net].pattern = patterns[net]
+            nns[net].pattern_mask = pattern_masks[net]
 
 
     if to_do == 'forward':
@@ -276,8 +280,11 @@ def run_nn(data_name, data_set, data_end_index, fea_dict, lab_dict, arch_dict, c
     # clearing memory
     del inp, outs_dict, data_set
 
+    
     # save the model
     if to_do == 'train':
+        patterns = dict()
+        pattern_masks = dict()
         for net in nns.keys():
             checkpoint = {}
 
@@ -293,6 +300,19 @@ def run_nn(data_name, data_set, data_end_index, fea_dict, lab_dict, arch_dict, c
                 ghcgs_ret = nns[net].apply_ghcgs()
                 # if ghcgs_ret == 1:
                 #     print('')
+
+            if nns[net].if_pattern:
+                patterns[net] = nns[net].pattern
+                pattern_masks[net] = nns[net].pattern_mask
+                pass
+                # print('Update pattern and prun of ' + net)
+                # pattern_ret = nns[net].update_patterns()
+                # mask_ret = nns[net].update_mask()
+                # weight_ret = nns[net].update_weight()
+                # if pattern_ret and mask_ret and weight_ret:
+                #     print('Update pattern complete of ' + net)
+                # else:
+                #     print(f'Update pattern net failed pattern_ret:[pattern_ret], mask_ret[mask_ret], weight_ret[weight_ret]')
 
             checkpoint['model_par'] = nns[net].state_dict()
             checkpoint['optimizer_par'] = optimizers[net].state_dict()
@@ -339,4 +359,4 @@ def run_nn(data_name, data_set, data_end_index, fea_dict, lab_dict, arch_dict, c
     else:
         data_set = torch.from_numpy(data_set).float()
 
-    return [data_name, data_set, data_end_index, fea_dict, lab_dict, arch_dict]
+    return [data_name, data_set, data_end_index, fea_dict, lab_dict, arch_dict], patterns, pattern_masks
